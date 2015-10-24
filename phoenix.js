@@ -120,6 +120,7 @@ type Layout = {name: string};
 
 function performLayout(layout: Layout, options) {
   const layoutFn = getLayoutFn(layout);
+  // $FlowFixMe flow bug? property not found on Screen
   let windows = options.screen.visibleWindows()
     .filter(w => {
       const appName = w.app().name();
