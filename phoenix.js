@@ -143,7 +143,6 @@ function performLayout(layout: Layout, options) {
   }
 
   // Filter out ignored apps and windows
-  // $FlowFixMe flow bug? property not found on Screen
   let windows = options.screen.visibleWindows()
     .filter(w => {
       const appName = w.app().name();
