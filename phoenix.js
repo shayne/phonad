@@ -24,10 +24,6 @@ keyHandlers.push(Phoenix.bind('1', mod2, () => {
   showCenteredModalInScreen(Layouts.TALL_RIGHT.name, screen)
 }));
 
-keyHandlers.push(Phoenix.bind('return', mod1, () => {
-  makePrimary(Window.focusedWindow());
-}));
-
 keyHandlers.push(Phoenix.bind('t', mod1, () => {
   const app = App.launch("iTerm");
   app.focus();
@@ -36,6 +32,11 @@ keyHandlers.push(Phoenix.bind('t', mod1, () => {
 keyHandlers.push(Phoenix.bind('a', mod1, () => {
   const app = App.launch("Atom");
   app.focus();
+}));
+
+
+keyHandlers.push(Phoenix.bind('return', mod1, () => {
+  makePrimary(Window.focusedWindow());
 }));
 
 keyHandlers.push(Phoenix.bind('h', mod1, () => {
