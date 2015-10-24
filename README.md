@@ -28,10 +28,10 @@ A WIP of implementing a Xmonad inspired config for kasper/phoenix
   * Toggle ignoring `Window.focusedWindow()` in layout
   
   **`'h' + mod1`**
-  * Increase the width of the primary window
+  * Decrease the width of current focused window
    
   **`'l' + mod1`**
-  * Decrease the width of the primary window
+  * Increase the width of current focused window
   
   **`'j' + mod2`**
   * Cycle current screen window focus to the right
