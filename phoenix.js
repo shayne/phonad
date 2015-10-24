@@ -24,7 +24,7 @@ keyHandlers.push(Phoenix.bind('1', mod2, () => {
   showCenteredModalInScreen(Layouts.TALL_RIGHT.name, screen)
 }));
 
-keyHandlers.push(Phoenix.bind('t', mod1, () => {
+keyHandlers.push(Phoenix.bind('i', mod1, () => {
   const app = App.launch("iTerm");
   app.focus();
 }));
@@ -34,9 +34,22 @@ keyHandlers.push(Phoenix.bind('a', mod1, () => {
   app.focus();
 }));
 
+keyHandlers.push(Phoenix.bind('c', mod1, () => {
+  const app = App.launch("Google Chrome");
+  app.focus();
+}));
 
 keyHandlers.push(Phoenix.bind('return', mod1, () => {
   makePrimary(Window.focusedWindow());
+}));
+
+keyHandlers.push(Phoenix.bind('t', mod1, () => {
+  const win = Window.focusedWindow();
+  performLayout(Layouts.TALL_RIGHT, {
+    screen: win.screen(),
+    toggleIgnore: true,
+    window: win,
+  });
 }));
 
 keyHandlers.push(Phoenix.bind('h', mod1, () => {
@@ -84,7 +97,7 @@ eventHandlers.push(Phoenix.on('windowDidClose', (window: Window) => {
 }));
 
 eventHandlers.push(Phoenix.on('windowDidOpen', (window: Window) => {
-  performLayout(Layouts.TALL_RIGHT, { screen });
+  performLayout(Layouts.TALL_RIGHT, { screen: Screen.currentScreen() });
 }));
 
 eventHandlers.push(Phoenix.on('windowDidResize', (window: Window) => {
@@ -120,14 +133,32 @@ type Layout = {name: string};
 
 function performLayout(layout: Layout, options) {
   const layoutFn = getLayoutFn(layout);
+
+  // Toggle ignoring a window
+  if (options.toggleIgnore && options.window) {
+    const whash = options.window.hash();
+    const widx = performLayout.ignoredWindows.indexOf(whash);
+    widx >= 0 ? performLayout.ignoredWindows.splice(widx, 1)
+      : performLayout.ignoredWindows.push(whash);
+  }
+
+  // Filter out ignored apps and windows
   // $FlowFixMe flow bug? property not found on Screen
   let windows = options.screen.visibleWindows()
     .filter(w => {
       const appName = w.app().name();
-      return !IGNORED_APPS.some(n => appName === n);
+      if (IGNORED_APPS.some(n => appName === n)) {
+        return false;
+      }
+      if (performLayout.ignoredWindows.some(h => w.hash() ===h)) {
+        return false;
+      }
+      return true;
     });
   layoutFn(windows, options);
 }
+
+performLayout.ignoredWindows = [];
 
 function getLayoutFn(layout: Layout) {
   return layoutTallRight;
