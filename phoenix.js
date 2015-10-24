@@ -4,90 +4,93 @@ let IGNORED_APPS = [
   'Simulator',
 ];
 
-const screens = Screen.screens();
-
 const Layouts = {
   TALL_RIGHT: {
     name: 'Tall Right',
   }
 };
 
-type Layout = {name: string};
+// START HANDLERS
 
-const tileHandler = Phoenix.bind('1', [ 'alt', 'shift', 'ctrl'], () => {
+const keyHandlers: Array<KeyHandler> = [];
+const eventHandlers: Array<EventHandler> = [];
+
+keyHandlers.push(Phoenix.bind('1', [ 'alt', 'shift', 'ctrl'], () => {
   const screen = Screen.currentScreen();
   performLayout(Layouts.TALL_RIGHT, { screen });
   showCenteredModalInScreen(Layouts.TALL_RIGHT.name, screen)
-});
+}));
 
-const makePrimaryHandler = Phoenix.bind('return', ['alt', 'shift'], () => {
+keyHandlers.push(Phoenix.bind('return', ['alt', 'shift'], () => {
   makePrimary(Window.focusedWindow());
-});
+}));
 
-const focusTerminal = Phoenix.bind('t', ['alt', 'shift'], () => {
+keyHandlers.push(Phoenix.bind('t', ['alt', 'shift'], () => {
   const app = App.launch("iTerm");
   app.focus();
-});
+}));
 
-const focusAtom = Phoenix.bind('a', ['alt', 'shift'], () => {
+keyHandlers.push(Phoenix.bind('a', ['alt', 'shift'], () => {
   const app = App.launch("Atom");
   app.focus();
-});
+}));
 
-const increaseSizeHandler = Phoenix.bind('h', ['alt', 'shift'], () => {
+keyHandlers.push(Phoenix.bind('h', ['alt', 'shift'], () => {
   performLayout(Layouts.TALL_RIGHT, {
     screen: Screen.currentScreen(),
     increasePrimary: true
   });
-});
+}));
 
-const decreaseSizeHandler = Phoenix.bind('l', ['alt', 'shift'], () => {
+keyHandlers.push(Phoenix.bind('l', ['alt', 'shift'], () => {
   performLayout(Layouts.TALL_RIGHT, {
     screen: Screen.currentScreen(),
     decreasePrimary: true
   });
-});
+}));
 
-const cycleWindowDownHandler = Phoenix.bind('j', ['alt', 'shift', 'ctrl'], () => {
+keyHandlers.push(Phoenix.bind('j', ['alt', 'shift', 'ctrl'], () => {
   performLayout(Layouts.TALL_RIGHT, {
     screen: Screen.currentScreen(),
     window: Window.focusedWindow(),
     moveWindowRight: true
   });
-});
+}));
 
-const cycleWindowUpHandler = Phoenix.bind('k', ['alt', 'shift', 'ctrl'], () => {
+keyHandlers.push(Phoenix.bind('k', ['alt', 'shift', 'ctrl'], () => {
   performLayout(Layouts.TALL_RIGHT, {
     screen: Screen.currentScreen(),
     window: Window.focusedWindow(),
     moveWindowLeft: true
   });
-});
+}));
 
-const focusDownHandler = Phoenix.bind('j', ['alt', 'shift'], () => {
+keyHandlers.push(Phoenix.bind('j', ['alt', 'shift'], () => {
   const fwin = Window.focusedWindow();
   fwin.screen().focusWindowToEast(fwin);
-});
+}));
 
-const focusUpHandler = Phoenix.bind('k', ['alt', 'shift'], () => {
+keyHandlers.push(Phoenix.bind('k', ['alt', 'shift'], () => {
   const fwin = Window.focusedWindow();
   fwin.screen().focusWindowToWest(fwin);
-});
+}));
 
-const windowClosedHandler = Phoenix.on('windowDidClose', (window: Window) => {
+eventHandlers.push(Phoenix.on('windowDidClose', (window: Window) => {
   performLayout(Layouts.TALL_RIGHT, {screen: Screen.currentScreen()});
-});
+}));
 
-const windowOpenedHandler = Phoenix.on('windowDidOpen', (window: Window) => {
+eventHandlers.push(Phoenix.on('windowDidOpen', (window: Window) => {
   const screen = Screen.currentScreen();
   if (window.screen().isEqual(screen)) {
     performLayout(Layouts.TALL_RIGHT, { screen });
   }
-});
+}));
 
-const windowResizedHandler = Phoenix.on('windowDidResize', (window: Window) => {
+eventHandlers.push(Phoenix.on('windowDidResize', (window: Window) => {
   performLayout(Layouts.TALL_RIGHT, {screen: Screen.currentScreen()});
-});
+}));
+
+// END HANDLERS
 
 function showCenteredModalInScreen(message: string, screen: Screen) {
   const m = new Modal();
@@ -111,6 +114,8 @@ function makePrimary(window: Window) {
     primaryWindow: window,
   });
 }
+
+type Layout = {name: string};
 
 function performLayout(layout: Layout, options) {
   const layoutFn = getLayoutFn(layout);
@@ -205,14 +210,7 @@ Screen.screens().forEach(s => {
   layoutTallRight[s.hash()] = { primaryRatio: 0.5 };
 });
 
-// Flow bug with not prioritizing libs
-declare class Screen extends Identifiable {
-  static currentScreen(): Screen;
-  static screens(): Array<Screen>;
-  screen(): Screen;
-  visibleFrameInRectangle(): Rectangle;
-  visibleWindows(): Array<Window>;
-}
+// START POLYFILLS
 
 // $FlowFixMe polyfill
 Screen.currentScreen = function(): Screen {
@@ -255,4 +253,17 @@ Screen.prototype.focusWindowToWest = function(window: Window): boolean {
   const newIdx = (idx + 1) % windows.length;
 
   return windows[newIdx].focus();
+}
+
+// END POLYFILLS
+
+// FLOW HACKS
+
+// Flow bug with not prioritizing libs
+declare class Screen extends Identifiable {
+  static currentScreen(): Screen;
+  static screens(): Array<Screen>;
+  screen(): Screen;
+  visibleFrameInRectangle(): Rectangle;
+  visibleWindows(): Array<Window>;
 }
