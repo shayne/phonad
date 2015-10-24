@@ -15,41 +15,44 @@ const Layouts = {
 const keyHandlers: Array<KeyHandler> = [];
 const eventHandlers: Array<EventHandler> = [];
 
-keyHandlers.push(Phoenix.bind('1', [ 'alt', 'shift', 'ctrl'], () => {
+const mod1 = ['alt', 'shift'];
+const mod2 = ['alt', 'shift', 'ctrl'];
+
+keyHandlers.push(Phoenix.bind('1', mod2, () => {
   const screen = Screen.currentScreen();
   performLayout(Layouts.TALL_RIGHT, { screen });
   showCenteredModalInScreen(Layouts.TALL_RIGHT.name, screen)
 }));
 
-keyHandlers.push(Phoenix.bind('return', ['alt', 'shift'], () => {
+keyHandlers.push(Phoenix.bind('return', mod1, () => {
   makePrimary(Window.focusedWindow());
 }));
 
-keyHandlers.push(Phoenix.bind('t', ['alt', 'shift'], () => {
+keyHandlers.push(Phoenix.bind('t', mod1, () => {
   const app = App.launch("iTerm");
   app.focus();
 }));
 
-keyHandlers.push(Phoenix.bind('a', ['alt', 'shift'], () => {
+keyHandlers.push(Phoenix.bind('a', mod1, () => {
   const app = App.launch("Atom");
   app.focus();
 }));
 
-keyHandlers.push(Phoenix.bind('h', ['alt', 'shift'], () => {
+keyHandlers.push(Phoenix.bind('h', mod1, () => {
   performLayout(Layouts.TALL_RIGHT, {
     screen: Screen.currentScreen(),
     increasePrimary: true
   });
 }));
 
-keyHandlers.push(Phoenix.bind('l', ['alt', 'shift'], () => {
+keyHandlers.push(Phoenix.bind('l', mod1, () => {
   performLayout(Layouts.TALL_RIGHT, {
     screen: Screen.currentScreen(),
     decreasePrimary: true
   });
 }));
 
-keyHandlers.push(Phoenix.bind('j', ['alt', 'shift', 'ctrl'], () => {
+keyHandlers.push(Phoenix.bind('j', mod2, () => {
   performLayout(Layouts.TALL_RIGHT, {
     screen: Screen.currentScreen(),
     window: Window.focusedWindow(),
@@ -57,7 +60,7 @@ keyHandlers.push(Phoenix.bind('j', ['alt', 'shift', 'ctrl'], () => {
   });
 }));
 
-keyHandlers.push(Phoenix.bind('k', ['alt', 'shift', 'ctrl'], () => {
+keyHandlers.push(Phoenix.bind('k', mod2, () => {
   performLayout(Layouts.TALL_RIGHT, {
     screen: Screen.currentScreen(),
     window: Window.focusedWindow(),
@@ -65,12 +68,12 @@ keyHandlers.push(Phoenix.bind('k', ['alt', 'shift', 'ctrl'], () => {
   });
 }));
 
-keyHandlers.push(Phoenix.bind('j', ['alt', 'shift'], () => {
+keyHandlers.push(Phoenix.bind('j', mod1, () => {
   const fwin = Window.focusedWindow();
   fwin.screen().focusWindowToEast(fwin);
 }));
 
-keyHandlers.push(Phoenix.bind('k', ['alt', 'shift'], () => {
+keyHandlers.push(Phoenix.bind('k', mod1, () => {
   const fwin = Window.focusedWindow();
   fwin.screen().focusWindowToWest(fwin);
 }));
