@@ -83,10 +83,7 @@ eventHandlers.push(Phoenix.on('windowDidClose', (window: Window) => {
 }));
 
 eventHandlers.push(Phoenix.on('windowDidOpen', (window: Window) => {
-  const screen = Screen.currentScreen();
-  if (window.screen().isEqual(screen)) {
-    performLayout(Layouts.TALL_RIGHT, { screen });
-  }
+  performLayout(Layouts.TALL_RIGHT, { screen });
 }));
 
 eventHandlers.push(Phoenix.on('windowDidResize', (window: Window) => {
