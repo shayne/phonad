@@ -53,16 +53,20 @@ keyHandlers.push(Phoenix.bind('t', mod1, () => {
 }));
 
 keyHandlers.push(Phoenix.bind('h', mod1, () => {
+  const win = Window.focusedWindow();
   performLayout(Layouts.TALL_RIGHT, {
-    screen: Screen.currentScreen(),
-    increasePrimary: true
+    screen: win.screen(),
+    decreaseWidth: true,
+    window: win,
   });
 }));
 
 keyHandlers.push(Phoenix.bind('l', mod1, () => {
+  const win = Window.focusedWindow();
   performLayout(Layouts.TALL_RIGHT, {
-    screen: Screen.currentScreen(),
-    decreasePrimary: true
+    screen: win.screen(),
+    increaseWidth: true,
+    window: win,
   });
 }));
 
@@ -168,8 +172,8 @@ function layoutTallRight(windows: Array<Window>, options: Object) {
   const shash = screen.hash();
   const {
     primaryWindow,
-    increasePrimary,
-    decreasePrimary,
+    increaseWidth,
+    decreaseWidth,
     moveWindowLeft,
     moveWindowRight,
     window,
@@ -177,7 +181,7 @@ function layoutTallRight(windows: Array<Window>, options: Object) {
 
   const phash = primaryWindow && primaryWindow.hash();
 
-  let primaryRatio = layoutTallRight[shash].primaryRatio;
+  let winRatios = layoutTallRight.winRatios[shash];
 
   // TODO: make immutable
   // sort windows left to right, put priority win on far right
@@ -200,7 +204,7 @@ function layoutTallRight(windows: Array<Window>, options: Object) {
     return;
   }
 
-  if (moveWindowLeft || moveWindowRight) {
+  if (window && moveWindowLeft || moveWindowRight) {
     const win1 = windows.filter(w => w.isEqual(window))[0];
     const idx = windows.indexOf(win1);
     const newIdx = (moveWindowLeft ? idx + 1
@@ -215,31 +219,70 @@ function layoutTallRight(windows: Array<Window>, options: Object) {
     width: swidth, height: sheight
   } = screen.visibleFrameInRectangle();
 
-  if (increasePrimary || decreasePrimary) {
-    primaryRatio += (increasePrimary ? 0.03 : -0.03);
+  if (window && increaseWidth || decreaseWidth) {
+    const ratioStep = 0.03;
+    const minRatio = 0.05;
+    const maxRatio = 0.95 - ((windows.length - 1) * minRatio);
+
+    const whash = window.hash();
+    let wratio = winRatios[whash] ||
+      (window.size().width / screen.visibleFrameInRectangle().width);
+    wratio += increaseWidth ? ratioStep : -ratioStep;
+    wratio = Math.min(Math.max(wratio, minRatio), maxRatio);
+    winRatios[whash] = wratio;
+
+    const totalRatios = Object.keys(winRatios)
+      .map(k => winRatios[k])
+      .reduce((o,v,i) => o + v, 0);
+
+    if (totalRatios > maxRatio) {
+      let delta = (totalRatios - maxRatio) / (winRatios.length - 1);
+      Object.keys(winRatios).forEach(h => {
+        if (h === whash) return;
+        if (minRatio > winRatios[h] - delta) {
+          delta += winRatios[h] - minRatio;
+          winRatios[h] = minRatio;
+        }
+      });
+      Object.keys(winRatios).forEach(h => {
+        if (h === whash) return;
+        if (winRatios[h] - delta > minRatio) {
+          winRatios[h] -= delta;
+        }
+      });
+    }
+
+    layoutTallRight.winRatios[shash] = winRatios;
   }
 
-  primaryRatio = Math.min(Math.max(primaryRatio, 0.05), 0.95);
-  layoutTallRight[shash].primaryRatio = primaryRatio;
+  const winWidths = {};
+  let totalWinWidths = 0;
+  Object.keys(winRatios).forEach(h => {
+    const r = winRatios[h];
+    const w = Math.round(swidth * r);
+    winWidths[h] = w;
+    totalWinWidths += w;
+  });
 
-  const priWidth = Math.round(swidth * primaryRatio);
-  const winWidth = (swidth - priWidth) / (numWindows - 1);
+  const winWidth = (swidth - totalWinWidths) /
+    Math.max(1, numWindows - Object.keys(winRatios).length);
 
   let cx = sx;
   windows.forEach((w: Window, i: number) => {
-    const x = cx, y = sy;
-    cx += winWidth;
+    const x = cx, y = sy, width = winWidths[w.hash()] || winWidth;
+    cx += width;
     const newFrame = {
       x, y, height: sheight,
-      width: i === (windows.length - 1) ? priWidth : winWidth,
+      width: width
     };
     w.setFrame(newFrame);
     // Phoenix.log('\n' + w.title() + '\n\t' + JSON.stringify(newFrame));
   });
 }
 
+layoutTallRight.winRatios = [];
 Screen.screens().forEach(s => {
-  layoutTallRight[s.hash()] = { primaryRatio: 0.5 };
+  layoutTallRight.winRatios[s.hash()] = { /* win-hash : ratio */ };
 });
 
 // START POLYFILLS
