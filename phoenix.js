@@ -80,7 +80,7 @@ const windowClosedHandler = Phoenix.on('windowDidClose', (window: Window) => {
 
 const windowOpenedHandler = Phoenix.on('windowDidOpen', (window: Window) => {
   const screen = Screen.currentScreen();
-  if (window.screen().hash() == screen.hash()) {
+  if (window.screen().isEqual(screen)) {
     performLayout(Layouts.TALL_RIGHT, { screen });
   }
 });
@@ -157,7 +157,7 @@ function layoutTallRight(windows: Array<Window>, options: Object) {
   const numWindows = windows.length;
 
   // full-screen for 1 window
-  if (numWindows == 1) {
+  if (numWindows === 1) {
     const w = windows[0];
     w.setFrame(screen.visibleFrameInRectangle());
     return;
@@ -222,7 +222,7 @@ Screen.currentScreen = function(): Screen {
 
 // $FlowFixMe polyfill
 Screen.prototype.visibleWindows = function(): Array<Window> {
-  return Window.visibleWindows().filter(w => w.screen().hash() === this.hash());
+  return Window.visibleWindows().filter(w => this.isEqual(w.screen()));
 };
 
 // $FlowFixMe polyfill
