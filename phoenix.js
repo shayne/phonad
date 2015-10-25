@@ -46,7 +46,10 @@ keyHandlers.push(Phoenix.bind('c', mod1, () => {
 }));
 
 keyHandlers.push(Phoenix.bind('return', mod1, () => {
-  makePrimary(Window.focusedWindow());
+  performLayout(Layouts.TALL_RIGHT, {
+    screen: window.screen(),
+    primaryWindow: window,
+  });
 }));
 
 keyHandlers.push(Phoenix.bind('t', mod1, () => {
@@ -103,6 +106,7 @@ keyHandlers.push(Phoenix.bind('k', mod1, () => {
 }));
 
 eventHandlers.push(Phoenix.on('windowDidClose', (window: Window) => {
+  removeReferencesToWindow(window);
   performLayout(Layouts.TALL_RIGHT, {screen: Screen.currentScreen()});
 }));
 
@@ -132,10 +136,14 @@ function showCenteredModalInScreen(message: string, screen: Screen) {
   m.show();
 }
 
-function makePrimary(window: Window) {
-  performLayout(Layouts.TALL_RIGHT, {
-    screen: window.screen(),
-    primaryWindow: window,
+function removeReferencesToWindow(window: Window) {
+  const wHash = window.hash();
+  // Clear out ignoredWindows cache
+  const wIdx = performLayout.ignoredWindows.indexOf(wHash);
+  wIdx >= 0 && performLayout.ignoredWindows.splice(wIdx, 1);
+  // Clear out ratio cache
+  Screen.screens().forEach(s => {
+    delete layoutTallRight.winRatios[s.hash()][wHash];
   });
 }
 
@@ -243,8 +251,6 @@ function layoutTallRight(windows: Array<Window>, options: Object) {
       const tmpRatio = wCurrentRatio + (increaseWidth ? widthStep : -widthStep);
       const wNewRatio = Math.max(minRatio, Math.min(maxRatio, tmpRatio));
 
-      debug({ wNewRatio });
-
       setSpecRatio(screen, window, wNewRatio);
     } else {
       // TOOD implement resizing of spec windows
@@ -281,7 +287,7 @@ function layoutTallRight(windows: Array<Window>, options: Object) {
   });
 }
 
-layoutTallRight.winRatios = [];
+layoutTallRight.winRatios = {};
 Screen.screens().forEach(s => {
   layoutTallRight.winRatios[s.hash()] = { /* win-hash : ratio */ };
 });
