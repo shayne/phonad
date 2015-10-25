@@ -10,6 +10,12 @@ const Layouts = {
   }
 };
 
+// DEBUG
+
+function debug(o: any) {
+  Phoenix.log(JSON.stringify(o));
+}
+
 // START HANDLERS
 
 const keyHandlers: Array<KeyHandler> = [];
@@ -169,19 +175,28 @@ function getLayoutFn(layout: Layout) {
 
 function layoutTallRight(windows: Array<Window>, options: Object) {
   const screen = options.screen;
-  const shash = screen.hash();
+  const numWindows = windows.length;
+
+  // Return early if we only have one window
+  if (numWindows === 1) {
+    const w = windows[0];
+    w.setFrame(screen.visibleFrameInRectangle());
+    return;
+  }
+
+  const sHash = screen.hash();
   const {
     primaryWindow,
     increaseWidth,
     decreaseWidth,
     moveWindowLeft,
     moveWindowRight,
-    window,
   } = options;
 
-  const phash = primaryWindow && primaryWindow.hash();
-
-  let winRatios = layoutTallRight.winRatios[shash];
+  const {
+    x: sX, y: sY,
+    width: sWidth, height: sHeight
+  } = screen.visibleFrameInRectangle();
 
   // TODO: make immutable
   // sort windows left to right, put priority win on far right
@@ -195,16 +210,9 @@ function layoutTallRight(windows: Array<Window>, options: Object) {
     return aFrame.x - bFrame.x;
   });
 
-  const numWindows = windows.length;
-
-  // full-screen for 1 window
-  if (numWindows === 1) {
-    const w = windows[0];
-    w.setFrame(screen.visibleFrameInRectangle());
-    return;
-  }
-
-  if (window && moveWindowLeft || moveWindowRight) {
+  // Move focused window left or right
+  if (options.window && moveWindowLeft || moveWindowRight) {
+    const window = options.window;
     const win1 = windows.filter(w => w.isEqual(window))[0];
     const idx = windows.indexOf(win1);
     const newIdx = (moveWindowLeft ? idx + 1
@@ -214,69 +222,62 @@ function layoutTallRight(windows: Array<Window>, options: Object) {
     windows[newIdx] = window;
   }
 
-  const {
-    x: sx, y: sy,
-    width: swidth, height: sheight
-  } = screen.visibleFrameInRectangle();
+  // Resize focused window
+  if (options.window && increaseWidth || decreaseWidth) {
+    const window = options.window;
+    const { width: wWidth, height: wHeight } = window.size();
 
-  if (window && increaseWidth || decreaseWidth) {
-    const ratioStep = 0.03;
-    const minRatio = 0.05;
-    const maxRatio = 0.95 - ((windows.length - 1) * minRatio);
+    const minRatio = 0.16;
+    const widthStep = 0.04;
 
-    const whash = window.hash();
-    let wratio = winRatios[whash] ||
-      (window.size().width / screen.visibleFrameInRectangle().width);
-    wratio += increaseWidth ? ratioStep : -ratioStep;
-    wratio = Math.min(Math.max(wratio, minRatio), maxRatio);
-    winRatios[whash] = wratio;
+    const numFlowWindows = numWindows - getNumSpecWindows(screen);
+    const totalSpecRatio = getTotalSpecRatio(screen);
 
-    const totalRatios = Object.keys(winRatios)
-      .map(k => winRatios[k])
-      .reduce((o,v,i) => o + v, 0);
+    const wSpecRatio = getSpecRatios(screen)[window.hash()] || 0;
+    // Do not allow specifying all windows as spec windows
+    // Only allow up to numWindows - 1 or already specified windows
+    if (numFlowWindows > 1 || wSpecRatio) {
+      const wCurrentRatio = wSpecRatio || wWidth / sWidth;
+      const maxRatio  = 1 - (totalSpecRatio - wSpecRatio) - (minRatio * numFlowWindows);
 
-    if (totalRatios > maxRatio) {
-      let delta = (totalRatios - maxRatio) / (winRatios.length - 1);
-      Object.keys(winRatios).forEach(h => {
-        if (h === whash) return;
-        if (minRatio > winRatios[h] - delta) {
-          delta += winRatios[h] - minRatio;
-          winRatios[h] = minRatio;
-        }
-      });
-      Object.keys(winRatios).forEach(h => {
-        if (h === whash) return;
-        if (winRatios[h] - delta > minRatio) {
-          winRatios[h] -= delta;
-        }
-      });
+      const tmpRatio = wCurrentRatio + (increaseWidth ? widthStep : -widthStep);
+      const wNewRatio = Math.max(minRatio, Math.min(maxRatio, tmpRatio));
+
+      debug({ wNewRatio });
+
+      setSpecRatio(screen, window, wNewRatio);
+    } else {
+      // TOOD implement resizing of spec windows
+      // - If there are *no* windows to flow, we must steal from specified windows
+      //  - [ ] your minimum is minRatio
+      //  - [ ] your maximum is 1 - (total ratios - yourself)
+      //  - [ ] when descreasing in size, redistribute ratio evenly to other windows
+      //  - [ ] when increasing in size, steal ratio evenly from other windows
     }
-
-    layoutTallRight.winRatios[shash] = winRatios;
   }
 
-  const winWidths = {};
-  let totalWinWidths = 0;
-  Object.keys(winRatios).forEach(h => {
-    const r = winRatios[h];
-    const w = Math.round(swidth * r);
-    winWidths[h] = w;
-    totalWinWidths += w;
-  });
+  const specRatios = getSpecRatios(screen);
+  const specRatioList = Object.keys(specRatios).map(hash => specRatios[hash]);
+  const specWidthMap = {};
+  const totalWinWidths = Object.keys(specRatios).reduce((t, hash) => {
+    const width = Math.round(specRatios[hash] * sWidth);
+    specWidthMap[hash] = width;
+    return t += width;
+  }, 0);
 
-  const winWidth = (swidth - totalWinWidths) /
-    Math.max(1, numWindows - Object.keys(winRatios).length);
+  const flowWidth = (sWidth - totalWinWidths) /
+    Math.max(1, numWindows - getNumSpecWindows(screen));
 
-  let cx = sx;
+  let cX = sX;
   windows.forEach((w: Window, i: number) => {
-    const x = cx, y = sy, width = winWidths[w.hash()] || winWidth;
-    cx += width;
+    const x = cX, y = sY, width = specWidthMap[w.hash()] || flowWidth;
+    cX += width;
     const newFrame = {
-      x, y, height: sheight,
+      x, y, height: sHeight,
       width: width
     };
     w.setFrame(newFrame);
-    // Phoenix.log('\n' + w.title() + '\n\t' + JSON.stringify(newFrame));
+    // debug({ newFrame });
   });
 }
 
@@ -284,6 +285,30 @@ layoutTallRight.winRatios = [];
 Screen.screens().forEach(s => {
   layoutTallRight.winRatios[s.hash()] = { /* win-hash : ratio */ };
 });
+
+function getSpecRatios(screenOrHash: Screen|number): Object {
+  const sHash = typeof screenOrHash === 'number' ? screenOrHash : screenOrHash.hash();
+  return layoutTallRight.winRatios[sHash];
+}
+
+function getNumSpecWindows(screenOrHash: Screen|number): number {
+  const sHash = typeof screenOrHash === 'number' ? screenOrHash : screenOrHash.hash();
+  return Object.keys(getSpecRatios(screenOrHash)).length;
+}
+
+function getTotalSpecRatio(screenOrHash: Screen|number): number {
+  const sHash = typeof screenOrHash === 'number' ? screenOrHash : screenOrHash.hash();
+  const specRatios = getSpecRatios(screenOrHash);
+  return Object.keys(specRatios)
+    .map(hash => specRatios[hash])
+    .reduce((t, r) => t + r, 0);
+}
+
+function setSpecRatio(screenOrHash: Screen|number, windowOrHash: Window|number, ratio: number) {
+  const sHash = typeof screenOrHash === 'number' ? screenOrHash : screenOrHash.hash();
+  const wHash = typeof windowOrHash === 'number' ? windowOrHash : windowOrHash.hash();
+  layoutTallRight.winRatios[sHash][wHash] = ratio;
+}
 
 // START POLYFILLS
 
