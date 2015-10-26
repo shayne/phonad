@@ -2,6 +2,8 @@
 
 let IGNORED_APPS = [
   'Simulator',
+  'System Preferences',
+  '1Password mini',
 ];
 
 // DEBUG
@@ -49,6 +51,7 @@ keyHandlers.push(Phoenix.bind('return', mod1, () => {
 }));
 
 keyHandlers.push(Phoenix.bind('t', mod1, () => {
+  Phoenix.log('Ignoring app: ' + Window.focusedWindow().app().name());
   performLayout(LayoutOptions.TOGGLE_IGNORE);
 }));
 
@@ -175,15 +178,20 @@ function performLayout(option: LayoutOption) {
 }
 
 const SpecWinRatios = {};
-Screen.screens().forEach(s => {
-  SpecWinRatios[s.hash()] = { /* win-hash : ratio */ };
-});
+_buildSpecWinRatios();
+function _buildSpecWinRatios() {
+  Screen.screens().forEach(s => {
+    SpecWinRatios[s.hash()] = { /* win-hash : ratio */ };
+  });
+}
 
 function _performLayout(option: LayoutOption, screen: Screen, windows: Array<Window>, window: Window) {
   const numWindows = windows.length;
 
   // Return early if we only have one window
   if (numWindows === 1) {
+    _buildSpecWinRatios();
+    IgnoredWindows.splice(0, IgnoredWindows.length);
     const w = windows[0];
     w.setFrame(screen.visibleFrameInRectangle());
     return;
@@ -231,25 +239,33 @@ function _performLayout(option: LayoutOption, screen: Screen, windows: Array<Win
     const numFlowWindows = numWindows - getNumSpecWindows(screen);
     const totalSpecRatio = getTotalSpecRatio(screen);
 
-    const wSpecRatio = getSpecRatios(screen)[window.hash()] || 0;
-    // Do not allow specifying all windows as spec windows
-    // Only allow up to numWindows - 1 or already specified windows
-    if (numFlowWindows > 1 || wSpecRatio) {
-      const wCurrentRatio = wSpecRatio || wWidth / sWidth;
-      const maxRatio  = 1 - (totalSpecRatio - wSpecRatio) - (minRatio * numFlowWindows);
+    const specRatios = getSpecRatios(screen);
+    const wSpecRatio = specRatios[window.hash()] || 0;
+    const wCurrentRatio = wSpecRatio || wWidth / sWidth;
+    const tmpRatio = wCurrentRatio +
+      (option === LayoutOptions.INCREASE_WIDTH ? widthStep : -widthStep);
 
-      const tmpRatio = wCurrentRatio +
-        (option === LayoutOptions.INCREASE_WIDTH ? widthStep : -widthStep);
+    if (numFlowWindows - ((wSpecRatio > 0) ? 0 : 1) >= 1) {
+      const maxRatio  = 1 - (totalSpecRatio - wCurrentRatio) - (minRatio * numFlowWindows);
       const wNewRatio = Math.max(minRatio, Math.min(maxRatio, tmpRatio));
-
       setSpecRatio(screen, window, wNewRatio);
     } else {
-      // TOOD implement resizing of spec windows
-      // - If there are *no* windows to flow, we must steal from specified windows
-      //  - [ ] your minimum is minRatio
-      //  - [ ] your maximum is 1 - (total ratios - yourself)
-      //  - [ ] when descreasing in size, redistribute ratio evenly to other windows
-      //  - [ ] when increasing in size, steal ratio evenly from other windows
+      const maxRatio = 1 - (totalSpecRatio - wSpecRatio);
+      const wMaxRatio = maxRatio +
+        ((option === LayoutOptions.INCREASE_WIDTH) ? widthStep : -widthStep);
+      const wNewRatio = Math.max(minRatio, Math.min(wMaxRatio, tmpRatio));
+      setSpecRatio(screen, window, wNewRatio);
+
+      const wHash = window.hash();
+      const delta = (wNewRatio - wCurrentRatio) / (numWindows - 1);
+
+      Object.keys(specRatios).forEach(wHs => {
+        const wH = parseInt(wHs);
+        if (wH === wHash) return;
+        const wCurrentRatio = specRatios[wH];
+        const wNewRatio = wCurrentRatio - delta;
+        setSpecRatio(screen, wH, wNewRatio);
+      });
     }
   }
 
@@ -276,7 +292,7 @@ function _performLayout(option: LayoutOption, screen: Screen, windows: Array<Win
     w.setFrame(newFrame);
     // debug({ newFrame });
   });
-  Phoenix.log('Layout finished');
+  // Phoenix.log('Layout finished');
 }
 
 function getSpecRatios(screenOrHash: Screen|number): Object {
