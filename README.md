@@ -6,46 +6,75 @@ A WIP of implementing a Xmonad inspired config for kasper/phoenix
 ### Key Handlers
 
   **`mod1`** = `alt + shift`
-  
+
   **`mod2`** = `alt + shift - ctrl`
-  
+
+  **`'r' + mod2`**
+  * Reload Phoenix config
+
+
   **`'1' + mod2`**
-  * Perform `TALL_RIGHT` layout
-  
+  * Re-layout
+
+
   **`'i' + mod1`**
   * Focus/Launch iTerm
-  
+
+
   **`'a' + mod1`**
   * Focus/Launch Atom
-  
+
+
   **`'c' + mod1`**
   * Focus/Launch Google Chrome
-  
+
+
   **`'return' + mod1`**
-  * Make `Window.focusedWindow()` primary window in current screen's layout
-  
+  * Make focused window primary window in current screen's layout
+
+
   **`'t' + mod1`**
-  * Toggle ignoring `Window.focusedWindow()` in layout
-  
+  * Toggle ignoring of focused window in layout
+
+
+  **`'r' + mod1`**
+  * Reset width of current focused window
+
+
   **`'h' + mod1`**
   * Decrease the width of current focused window
-   
+
+
   **`'l' + mod1`**
   * Increase the width of current focused window
-  
-  **`'j' + mod2`**
+
+
+  **`'j' + mod1`**
   * Cycle current screen window focus to the right
-  
-  **`'k' + mod2`**
+
+
+  **`'k' + mod1`**
   * Cycle current screen window focus to the left
-  
+
+
+  **`'j' + mod2`**
+  * Move current focused window to the right
+
+
+  **`'k' + mod2`**
+  * Move current focused window to the left
+
+
 ### Events
 
   **`windowDidOpen`, `windowDidClose`, `windowDidResize`**
   * Perform layout on current screen
-  
+
+
 ### Todo
- - [ ] Create middle wide layout
- - [ ] Add ability to cycle layout
+ - [x] Add ability to resize focused window
+ - [x] `'r' + mod1` to reset width
+ - [ ] Add key binding to specify primary column
+ - [ ] Add ability to add rows to a column
  - [ ] Pull polyfills upstream into native project
- - [ ] Add ability to persist ignoredWindows/primaryRation through a reload
+ - [ ] Add persistence for layout settings

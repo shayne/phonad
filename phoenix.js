@@ -4,12 +4,6 @@ let IGNORED_APPS = [
   'Simulator',
 ];
 
-const Layouts = {
-  TALL_RIGHT: {
-    name: 'Tall Right',
-  }
-};
-
 // DEBUG
 
 function debug(o: any) {
@@ -24,10 +18,15 @@ const eventHandlers: Array<EventHandler> = [];
 const mod1 = ['alt', 'shift'];
 const mod2 = ['alt', 'shift', 'ctrl'];
 
+keyHandlers.push(Phoenix.bind('r', mod2, () => {
+  Phoenix.reload();
+}));
+
 keyHandlers.push(Phoenix.bind('1', mod2, () => {
+  performLayout(LayoutOptions.NONE);
+
   const screen = Screen.currentScreen();
-  performLayout(Layouts.TALL_RIGHT, { screen });
-  showCenteredModalInScreen(Layouts.TALL_RIGHT.name, screen)
+  showCenteredModalInScreen('Re-layout', screen)
 }));
 
 keyHandlers.push(Phoenix.bind('i', mod1, () => {
@@ -46,53 +45,31 @@ keyHandlers.push(Phoenix.bind('c', mod1, () => {
 }));
 
 keyHandlers.push(Phoenix.bind('return', mod1, () => {
-  performLayout(Layouts.TALL_RIGHT, {
-    screen: window.screen(),
-    primaryWindow: window,
-  });
+  performLayout(LayoutOptions.MAKE_PRIMARY);
 }));
 
 keyHandlers.push(Phoenix.bind('t', mod1, () => {
-  const win = Window.focusedWindow();
-  performLayout(Layouts.TALL_RIGHT, {
-    screen: win.screen(),
-    toggleIgnore: true,
-    window: win,
-  });
+  performLayout(LayoutOptions.TOGGLE_IGNORE);
+}));
+
+keyHandlers.push(Phoenix.bind('r', mod1, () => {
+  performLayout(LayoutOptions.RESET_WIDTH);
 }));
 
 keyHandlers.push(Phoenix.bind('h', mod1, () => {
-  const win = Window.focusedWindow();
-  performLayout(Layouts.TALL_RIGHT, {
-    screen: win.screen(),
-    decreaseWidth: true,
-    window: win,
-  });
+  performLayout(LayoutOptions.DECREASE_WIDTH);
 }));
 
 keyHandlers.push(Phoenix.bind('l', mod1, () => {
-  const win = Window.focusedWindow();
-  performLayout(Layouts.TALL_RIGHT, {
-    screen: win.screen(),
-    increaseWidth: true,
-    window: win,
-  });
+  performLayout(LayoutOptions.INCREASE_WIDTH);
 }));
 
 keyHandlers.push(Phoenix.bind('j', mod2, () => {
-  performLayout(Layouts.TALL_RIGHT, {
-    screen: Screen.currentScreen(),
-    window: Window.focusedWindow(),
-    moveWindowRight: true
-  });
+  performLayout(LayoutOptions.MOVE_RIGHT);
 }));
 
 keyHandlers.push(Phoenix.bind('k', mod2, () => {
-  performLayout(Layouts.TALL_RIGHT, {
-    screen: Screen.currentScreen(),
-    window: Window.focusedWindow(),
-    moveWindowLeft: true
-  });
+  performLayout(LayoutOptions.MOVE_LEFT);
 }));
 
 keyHandlers.push(Phoenix.bind('j', mod1, () => {
@@ -107,15 +84,15 @@ keyHandlers.push(Phoenix.bind('k', mod1, () => {
 
 eventHandlers.push(Phoenix.on('windowDidClose', (window: Window) => {
   removeReferencesToWindow(window);
-  performLayout(Layouts.TALL_RIGHT, {screen: Screen.currentScreen()});
+  performLayout(LayoutOptions.NONE);
 }));
 
 eventHandlers.push(Phoenix.on('windowDidOpen', (window: Window) => {
-  performLayout(Layouts.TALL_RIGHT, { screen: Screen.currentScreen() });
+  performLayout(LayoutOptions.NONE);
 }));
 
 eventHandlers.push(Phoenix.on('windowDidResize', (window: Window) => {
-  performLayout(Layouts.TALL_RIGHT, {screen: Screen.currentScreen()});
+  performLayout(LayoutOptions.NONE);
 }));
 
 // END HANDLERS
@@ -139,50 +116,70 @@ function showCenteredModalInScreen(message: string, screen: Screen) {
 function removeReferencesToWindow(window: Window) {
   const wHash = window.hash();
   // Clear out ignoredWindows cache
-  const wIdx = performLayout.ignoredWindows.indexOf(wHash);
-  wIdx >= 0 && performLayout.ignoredWindows.splice(wIdx, 1);
+  const wIdx = IgnoredWindows.indexOf(wHash);
+  wIdx >= 0 && IgnoredWindows.splice(wIdx, 1);
   // Clear out ratio cache
   Screen.screens().forEach(s => {
-    delete layoutTallRight.winRatios[s.hash()][wHash];
+    delete SpecWinRatios[s.hash()][wHash];
   });
 }
 
-type Layout = {name: string};
+// START LAYOUT
 
-function performLayout(layout: Layout, options) {
-  const layoutFn = getLayoutFn(layout);
+
+var LayoutOptions = keyMirror({
+  NONE: null,
+  MAKE_PRIMARY: null,
+  TOGGLE_IGNORE: null,
+  DECREASE_WIDTH: null,
+  INCREASE_WIDTH: null,
+  MOVE_RIGHT: null,
+  MOVE_LEFT: null,
+  RESET_WIDTH: null,
+});
+
+type LayoutOption = $Enum<typeof LayoutOptions>;
+
+const IgnoredWindows = [];
+
+function performLayout(option: LayoutOption) {
+  const window = Window.focusedWindow();
+  const screen = Screen.currentScreen();
 
   // Toggle ignoring a window
-  if (options.toggleIgnore && options.window) {
-    const whash = options.window.hash();
-    const widx = performLayout.ignoredWindows.indexOf(whash);
-    widx >= 0 ? performLayout.ignoredWindows.splice(widx, 1)
-      : performLayout.ignoredWindows.push(whash);
+  if (option === LayoutOptions.TOGGLE_IGNORE) {
+    const wHash = window.hash();
+    const wIdx = IgnoredWindows.indexOf(wHash);
+    wIdx >= 0 ? IgnoredWindows.splice(wIdx, 1)
+      : IgnoredWindows.push(wHash);
+  }
+
+  if (option === LayoutOptions.RESET_WIDTH) {
+    delete SpecWinRatios[screen.hash()][window.hash()];
   }
 
   // Filter out ignored apps and windows
-  let windows = options.screen.visibleWindows()
+  let windows = screen.visibleWindows()
     .filter(w => {
       const appName = w.app().name();
       if (IGNORED_APPS.some(n => appName === n)) {
         return false;
       }
-      if (performLayout.ignoredWindows.some(h => w.hash() ===h)) {
+      if (IgnoredWindows.some(h => w.hash() === h)) {
         return false;
       }
       return true;
     });
-  layoutFn(windows, options);
+
+  _performLayout(option, screen, windows, window);
 }
 
-performLayout.ignoredWindows = [];
+const SpecWinRatios = {};
+Screen.screens().forEach(s => {
+  SpecWinRatios[s.hash()] = { /* win-hash : ratio */ };
+});
 
-function getLayoutFn(layout: Layout) {
-  return layoutTallRight;
-}
-
-function layoutTallRight(windows: Array<Window>, options: Object) {
-  const screen = options.screen;
+function _performLayout(option: LayoutOption, screen: Screen, windows: Array<Window>, window: Window) {
   const numWindows = windows.length;
 
   // Return early if we only have one window
@@ -193,13 +190,6 @@ function layoutTallRight(windows: Array<Window>, options: Object) {
   }
 
   const sHash = screen.hash();
-  const {
-    primaryWindow,
-    increaseWidth,
-    decreaseWidth,
-    moveWindowLeft,
-    moveWindowRight,
-  } = options;
 
   const {
     x: sX, y: sY,
@@ -210,29 +200,29 @@ function layoutTallRight(windows: Array<Window>, options: Object) {
   // sort windows left to right, put priority win on far right
   windows.sort((a: Window, b: Window) => {
     var aFrame = a.frame(), bFrame = b.frame();
-    if (a.isEqual(primaryWindow)) {
-      return 1;
-    } else if (b.isEqual(primaryWindow)) {
-      return -1;
+    if (option === LayoutOptions.MAKE_PRIMARY) {
+      if (a.isEqual(window)) {
+        return 1;
+      } else if (b.isEqual(window)) {
+        return -1;
+      }
     }
     return aFrame.x - bFrame.x;
   });
 
   // Move focused window left or right
-  if (options.window && moveWindowLeft || moveWindowRight) {
-    const window = options.window;
+  if (option === LayoutOptions.MOVE_RIGHT || option === LayoutOptions.MOVE_LEFT) {
     const win1 = windows.filter(w => w.isEqual(window))[0];
     const idx = windows.indexOf(win1);
-    const newIdx = (moveWindowLeft ? idx + 1
-      : (idx || numWindows) - 1) % numWindows;
+    const newIdx = (option === LayoutOptions.MOVE_LEFT
+      ? idx + 1 : (idx || numWindows) - 1) % numWindows;
     const nwin = windows[newIdx];
     windows[idx] = nwin;
     windows[newIdx] = window;
   }
 
   // Resize focused window
-  if (options.window && increaseWidth || decreaseWidth) {
-    const window = options.window;
+  if (option === LayoutOptions.INCREASE_WIDTH || option === LayoutOptions.DECREASE_WIDTH) {
     const { width: wWidth, height: wHeight } = window.size();
 
     const minRatio = 0.16;
@@ -248,7 +238,8 @@ function layoutTallRight(windows: Array<Window>, options: Object) {
       const wCurrentRatio = wSpecRatio || wWidth / sWidth;
       const maxRatio  = 1 - (totalSpecRatio - wSpecRatio) - (minRatio * numFlowWindows);
 
-      const tmpRatio = wCurrentRatio + (increaseWidth ? widthStep : -widthStep);
+      const tmpRatio = wCurrentRatio +
+        (option === LayoutOptions.INCREASE_WIDTH ? widthStep : -widthStep);
       const wNewRatio = Math.max(minRatio, Math.min(maxRatio, tmpRatio));
 
       setSpecRatio(screen, window, wNewRatio);
@@ -285,16 +276,12 @@ function layoutTallRight(windows: Array<Window>, options: Object) {
     w.setFrame(newFrame);
     // debug({ newFrame });
   });
+  Phoenix.log('Layout finished');
 }
-
-layoutTallRight.winRatios = {};
-Screen.screens().forEach(s => {
-  layoutTallRight.winRatios[s.hash()] = { /* win-hash : ratio */ };
-});
 
 function getSpecRatios(screenOrHash: Screen|number): Object {
   const sHash = typeof screenOrHash === 'number' ? screenOrHash : screenOrHash.hash();
-  return layoutTallRight.winRatios[sHash];
+  return SpecWinRatios[sHash];
 }
 
 function getNumSpecWindows(screenOrHash: Screen|number): number {
@@ -313,7 +300,7 @@ function getTotalSpecRatio(screenOrHash: Screen|number): number {
 function setSpecRatio(screenOrHash: Screen|number, windowOrHash: Window|number, ratio: number) {
   const sHash = typeof screenOrHash === 'number' ? screenOrHash : screenOrHash.hash();
   const wHash = typeof windowOrHash === 'number' ? windowOrHash : windowOrHash.hash();
-  layoutTallRight.winRatios[sHash][wHash] = ratio;
+  SpecWinRatios[sHash][wHash] = ratio;
 }
 
 // START POLYFILLS
@@ -362,6 +349,24 @@ Screen.prototype.focusWindowToWest = function(window: Window): boolean {
 }
 
 // END POLYFILLS
+
+// START UTILS
+
+function keyMirror(obj) {
+  var ret = {};
+  var key;
+  if (!(obj instanceof Object && !Array.isArray(obj))) {
+    throw new Error('keyMirror(...): Argument must be an object.');
+  }
+  for (key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      ret[key] = key;
+    }
+  }
+  return ret;
+};
+
+// END LIBS
 
 // FLOW HACKS
 
