@@ -5,71 +5,56 @@ A WIP of implementing a Xmonad inspired config for kasper/phoenix
 
 ### Key Handlers
 
-  **`mod1`** = `alt + shift`
+**`mod1`** = `alt + shift`
 
-  **`mod2`** = `alt + shift - ctrl`
+**`mod2`** = `alt + shift - ctrl`
 
-  **`'r' + mod2`**
-  * Reload Phoenix config
+**`'r' + mod2`**
+* Reload Phoenix config
 
+**`'1' + mod2`**
+* Re-layout
 
-  **`'1' + mod2`**
-  * Re-layout
+**`'i' + mod1`**
+* Focus/Launch iTerm
 
+**`'a' + mod1`**
+* Focus/Launch Atom
 
-  **`'i' + mod1`**
-  * Focus/Launch iTerm
+**`'c' + mod1`**
+* Focus/Launch Google Chrome
 
+**`'return' + mod1`**
+* Make focused window primary window in current screen's layout
 
-  **`'a' + mod1`**
-  * Focus/Launch Atom
+**`'t' + mod1`**
+* Toggle ignoring of focused window in layout
 
+**`'r' + mod1`**
+* Reset width of current focused window
 
-  **`'c' + mod1`**
-  * Focus/Launch Google Chrome
+**`'h' + mod1`**
+* Decrease the width of current focused window
 
+**`'l' + mod1`**
+* Increase the width of current focused window
 
-  **`'return' + mod1`**
-  * Make focused window primary window in current screen's layout
+**`'j' + mod1`**
+* Cycle current screen window focus to the right
 
+**`'k' + mod1`**
+* Cycle current screen window focus to the left
 
-  **`'t' + mod1`**
-  * Toggle ignoring of focused window in layout
+**`'j' + mod2`**
+* Move current focused window to the right
 
-
-  **`'r' + mod1`**
-  * Reset width of current focused window
-
-
-  **`'h' + mod1`**
-  * Decrease the width of current focused window
-
-
-  **`'l' + mod1`**
-  * Increase the width of current focused window
-
-
-  **`'j' + mod1`**
-  * Cycle current screen window focus to the right
-
-
-  **`'k' + mod1`**
-  * Cycle current screen window focus to the left
-
-
-  **`'j' + mod2`**
-  * Move current focused window to the right
-
-
-  **`'k' + mod2`**
-  * Move current focused window to the left
-
+**`'k' + mod2`**
+* Move current focused window to the left
 
 ### Events
 
-  **`windowDidOpen`, `windowDidClose`, `windowDidResize`**
-  * Perform layout on current screen
-
+**`windowDidOpen`, `windowDidClose`, `windowDidResize`**
+* Perform layout on current screen
 
 ### Todo
  - [x] Add ability to resize focused window
