@@ -59,6 +59,7 @@ A WIP of implementing a Xmonad inspired config for kasper/phoenix
 ### Todo
  - [x] Add ability to resize focused window
  - [x] `'r' + mod1` to reset width
+ - [ ] Make primary window default to center-most screen
  - [ ] Add key binding to specify primary column
  - [ ] Add ability to add rows to a column
  - [ ] Pull polyfills upstream into native project
