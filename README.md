@@ -59,6 +59,7 @@ A WIP of implementing a Xmonad inspired config for kasper/phoenix
 ### Todo
  - [x] Add ability to resize focused window
  - [x] `'r' + mod1` to reset width
+ - [ ] BUG: Un-ignore window stopped working
  - [ ] Make primary window default to center-most screen
  - [ ] Add API to allow for "Make xzy app primary"
  - [ ] Add key binding to specify primary column
