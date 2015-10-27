@@ -4,6 +4,8 @@ let IGNORED_APPS = [
   'Simulator',
   'System Preferences',
   '1Password mini',
+  'QuickTime Player',
+  'Dictionary',
 ];
 
 // DEBUG
@@ -148,6 +150,7 @@ const IgnoredWindows = [];
 function performLayout(option: LayoutOption) {
   const window = Window.focusedWindow();
   const screen = Screen.currentScreen();
+  const sHash = screen.hash();
 
   // Toggle ignoring a window
   if (option === LayoutOptions.TOGGLE_IGNORE) {
@@ -158,23 +161,36 @@ function performLayout(option: LayoutOption) {
   }
 
   if (option === LayoutOptions.RESET_WIDTH) {
-    delete SpecWinRatios[screen.hash()][window.hash()];
+    delete SpecWinRatios[sHash][window.hash()];
   }
 
-  // Filter out ignored apps and windows
+  // Filter out ignored apps/windows
+  const visibleWindowHashes = [];
   let windows = screen.visibleWindows()
     .filter(w => {
+      const wHash = w.hash();
+      visibleWindowHashes.push(wHash);
       const appName = w.app().name();
       if (IGNORED_APPS.some(n => appName === n)) {
         return false;
       }
-      if (IgnoredWindows.some(h => w.hash() === h)) {
+      if (IgnoredWindows.some(h => wHash === h)) {
         return false;
       }
       return true;
     });
 
-  _performLayout(option, screen, windows, window);
+    // Sometimes we don't receive onWindowDidClose, so
+    // we'll remove ratios for stale windows
+    Object.keys(SpecWinRatios[sHash]).forEach(rHs => {
+      const rH = parseInt(rHs);
+      if (visibleWindowHashes.indexOf(rH) === -1) {
+        Phoenix.log('Removing from SpecWinRatios: ' + rH);
+        delete SpecWinRatios[sHash][rH];
+      }
+    });
+
+    _performLayout(option, screen, windows, window);
 }
 
 const SpecWinRatios = {};
