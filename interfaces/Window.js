@@ -1,6 +1,6 @@
 declare class Screen extends Identifiable {
   /* custom */
-  static currentScreen(): Screen;
+  static mainScreen(): Screen;
 
   focusWindowToEast(window: Window): boolean;
   focusWindowToWest(window: Window): boolean;

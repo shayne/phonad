@@ -155,7 +155,7 @@ const IgnoredWindows = [];
 
 function performLayout(option: LayoutOption) {
   const window = Window.focusedWindow();
-  const screen = Screen.currentScreen();
+  const screen = Screen.mainScreen();
   const sHash = screen.hash();
 
   // Toggle ignoring a window
@@ -371,12 +371,6 @@ function setSpecRatio(screenOrHash: Screen|number, windowOrHash: Window|number, 
 // START POLYFILLS
 
 // $FlowFixMe polyfill
-Screen.currentScreen = function(): Screen {
-  const fwin = Window.focusedWindow();
-  return fwin.screen();
-}
-
-// $FlowFixMe polyfill
 Screen.prototype.visibleWindows = function(): Array<Window> {
   return Window.visibleWindows().filter(w => this.isEqual(w.screen()));
 };
@@ -437,7 +431,7 @@ function keyMirror(obj) {
 
 // Flow bug with not prioritizing libs
 declare class Screen extends Identifiable {
-  static currentScreen(): Screen;
+  static mainScreen(): Screen;
   static screens(): Array<Screen>;
   screen(): Screen;
   visibleFrameInRectangle(): Rectangle;
