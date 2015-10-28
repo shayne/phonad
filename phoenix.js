@@ -84,12 +84,12 @@ keyHandlers.push(Phoenix.bind('k', mod2, () => {
 
 keyHandlers.push(Phoenix.bind('j', mod1, () => {
   const fwin = Window.focusedWindow();
-  fwin.screen().focusWindowToEast(fwin);
+  focusWindowToEast(fwin);
 }));
 
 keyHandlers.push(Phoenix.bind('k', mod1, () => {
   const fwin = Window.focusedWindow();
-  fwin.screen().focusWindowToWest(fwin);
+  focusWindowToWest(fwin);
 }));
 
 eventHandlers.push(Phoenix.on('start', (window: Window) => {
@@ -373,16 +373,8 @@ function setSpecRatio(screenOrHash: Screen|number, windowOrHash: Window|number, 
   SpecWinRatios[sHash][wHash] = ratio;
 }
 
-// START POLYFILLS
-
-// $FlowFixMe polyfill
-Screen.prototype.visibleWindows = function(): Array<Window> {
-  return Window.visibleWindows().filter(w => this.isEqual(w.screen()));
-};
-
-// $FlowFixMe polyfill
-Screen.prototype.focusWindowToEast = function(window: Window): boolean {
-  const windows = this.visibleWindows();
+function focusWindowToEast(window: Window): boolean {
+  const windows = window.screen().visibleWindows();
 
   // sort windows left to right
   windows.sort((a: Window, b: Window) => {
@@ -396,9 +388,8 @@ Screen.prototype.focusWindowToEast = function(window: Window): boolean {
   return windows[newIdx].focus();
 }
 
-// $FlowFixMe polyfill
-Screen.prototype.focusWindowToWest = function(window: Window): boolean {
-  const windows = this.visibleWindows();
+function focusWindowToWest(window: Window): boolean {
+  const windows = window.screen().visibleWindows();
 
   // sort windows left to right
   windows.sort((a: Window, b: Window) => {
@@ -411,8 +402,6 @@ Screen.prototype.focusWindowToWest = function(window: Window): boolean {
 
   return windows[newIdx].focus();
 }
-
-// END POLYFILLS
 
 // START UTILS
 

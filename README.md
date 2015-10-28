@@ -62,5 +62,5 @@ A WIP of implementing a Xmonad inspired config for kasper/phoenix
  - [x] Make primary window default to center-most screen
  - [ ] Add API to allow for "Make xzy app primary"
  - [ ] Add ability to add rows to a column
- - [ ] Pull polyfills upstream into native project
+ - [x] Pull polyfills upstream into native project
  - [ ] Add persistence for layout settings
