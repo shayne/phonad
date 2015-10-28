@@ -1,3 +1,4 @@
+#!export PATH=/Users/sweeney/.nvm/versions/node/v4.2.1/bin; babel
 /* @flow */
 
 let IGNORED_APPS = [
@@ -34,17 +35,17 @@ keyHandlers.push(Phoenix.bind('1', mod2, () => {
 }));
 
 keyHandlers.push(Phoenix.bind('i', mod1, () => {
-  const app = App.launch("iTerm");
+  const app = App.launch('iTerm');
   app.focus();
 }));
 
 keyHandlers.push(Phoenix.bind('a', mod1, () => {
-  const app = App.launch("Atom");
+  const app = App.launch('Atom');
   app.focus();
 }));
 
 keyHandlers.push(Phoenix.bind('c', mod1, () => {
-  const app = App.launch("Google Chrome");
+  const app = App.launch('Google Chrome');
   app.focus();
 }));
 
