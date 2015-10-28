@@ -257,11 +257,7 @@ function _performLayout(option: LayoutOption, screen: Screen, windows: Array<Win
       delete SpecWinRatios[sHash][wRatio];
       cwRatio && setSpecRatio(screen, window, cwRatio);
       wRatio && setSpecRatio(screen, cw, wRatio);
-
-      return;
     }
-
-    Phoenix.log('Center window not found');
     return;
   }
 
