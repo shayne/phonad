@@ -239,7 +239,6 @@ function _performLayout(option: LayoutOption, screen: Screen, windows: Array<Win
         1 - ((x / centerPoints.x1) + ((x + width) / centerPoints.x2)) / 2
       );
       if (cwScore > score) {
-        Phoenix.log('found window');
         cwScore = score;
         cw = w;
       }
