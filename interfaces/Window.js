@@ -11,13 +11,13 @@ declare class Screen extends Identifiable {
   static mainScreen(): Screen;
   static screens(): Array<Screen>;
   frameInRectangle(): Rectangle;
+  visibleFrame(): Rectangle;
   visibleFrameInRectangle(): Rectangle;
   next(): Screen;
   previous(): Screen;
 }
 
 declare class Window extends Identifiable {
-
   static focusedWindow(): Window;
   static windows(): Array<Window>;
   static visibleWindows(): Array<Window>;

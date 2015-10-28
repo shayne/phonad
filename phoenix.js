@@ -30,8 +30,7 @@ keyHandlers.push(Phoenix.bind('r', mod2, () => {
 keyHandlers.push(Phoenix.bind('1', mod2, () => {
   performLayout(LayoutOptions.NONE);
 
-  const screen = Screen.currentScreen();
-  showCenteredModalInScreen('Re-layout', screen)
+  showCenteredModal('Re-layout')
 }));
 
 keyHandlers.push(Phoenix.bind('i', mod1, () => {
@@ -108,18 +107,20 @@ eventHandlers.push(Phoenix.on('windowDidResize', (window: Window) => {
 
 // END HANDLERS
 
-function showCenteredModalInScreen(message: string, screen: Screen) {
+function showCenteredModal(message: string) {
   const m = new Modal();
   m.duration = 1;
   m.message = message;
 
-  const { width: mw, height: mh} = m.frame();
-  const { width: sw, height: sh} = screen.visibleFrameInRectangle();
+  const sFrame = Screen.mainScreen().visibleFrame();
 
-  const mx = (sw / 2) - (mw / 2);
-  const my = (sh / 2) - (mh / 2);
+  const { width: mW, height: mH} = m.frame();
+  const { x: sX, y: sY, width: sW, height: sH} = sFrame;
 
-  m.origin = {x: mx, y: my};
+  const mX = Math.round((sW / 2) - (mW / 2));
+  const mY = Math.round((sH / 2) - (mH / 2));
+
+  m.origin = {x: sX + mX, y: sY + mY};
 
   m.show();
 }
@@ -434,6 +435,7 @@ declare class Screen extends Identifiable {
   static mainScreen(): Screen;
   static screens(): Array<Screen>;
   screen(): Screen;
+  visibleFrame(): Rectangle;
   visibleFrameInRectangle(): Rectangle;
   visibleWindows(): Array<Window>;
 }
