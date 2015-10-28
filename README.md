@@ -25,7 +25,7 @@ A WIP of implementing a Xmonad inspired config for kasper/phoenix
 * Focus/Launch Google Chrome
 
 **`'return' + mod1`**
-* Make focused window primary window in current screen's layout
+* Swap current screen focused window frame with center most window
 
 **`'t' + mod1`**
 * Toggle ignoring of focused window in layout
@@ -59,8 +59,7 @@ A WIP of implementing a Xmonad inspired config for kasper/phoenix
 ### Todo
  - [x] Add ability to resize focused window
  - [x] `'r' + mod1` to reset width
- - [ ] BUG: Un-ignore window stopped working
- - [ ] Make primary window default to center-most screen
+ - [x] Make primary window default to center-most screen
  - [ ] Add API to allow for "Make xzy app primary"
  - [ ] Add key binding to specify primary column
  - [ ] Add ability to add rows to a column

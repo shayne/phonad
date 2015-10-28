@@ -49,6 +49,11 @@ keyHandlers.push(Phoenix.bind('c', mod1, () => {
   app.focus();
 }));
 
+keyHandlers.push(Phoenix.bind('m', mod1, () => {
+  const app = App.launch('Messages');
+  app.focus();
+}));
+
 keyHandlers.push(Phoenix.bind('return', mod1, () => {
   performLayout(LayoutOptions.MAKE_PRIMARY);
 }));
@@ -215,23 +220,57 @@ function _performLayout(option: LayoutOption, screen: Screen, windows: Array<Win
   }
 
   const sHash = screen.hash();
+  const wHash = window.hash();
 
   const {
     x: sX, y: sY,
     width: sWidth, height: sHeight
   } = screen.visibleFrameInRectangle();
 
+  // Make primary -- RETURNS!
+  if (option === LayoutOptions.MAKE_PRIMARY) {
+    let cw = null;
+    let cwScore = 100; // needs to be an impossibly large ratio
+    const centerPoints = { x1: sWidth / 3, x2: sWidth / 3 * 2 };
+
+    windows.forEach(w => {
+      const {x, width } = w.frame();
+      const score = Math.abs(
+        1 - ((x / centerPoints.x1) + ((x + width) / centerPoints.x2)) / 2
+      );
+      debug({ score });
+      if (cwScore > score) {
+        Phoenix.log('found window');
+        cwScore = score;
+        cw = w;
+      }
+    });
+
+    if (cw && !cw.isEqual(window)) {
+      const cwHash = cw.hash();
+
+      const cwFrame = cw.frame();
+      cw.setFrame(window.frame());
+      window.setFrame(cwFrame);
+
+      const wRatio = SpecWinRatios[sHash][wHash];
+      const cwRatio = SpecWinRatios[sHash][cwHash];
+      delete SpecWinRatios[sHash][cwHash];
+      delete SpecWinRatios[sHash][wRatio];
+      cwRatio && setSpecRatio(screen, window, cwRatio);
+      wRatio && setSpecRatio(screen, cw, wRatio);
+
+      return;
+    }
+
+    Phoenix.log('Center window not found');
+    return;
+  }
+
   // TODO: make immutable
-  // sort windows left to right, put priority win on far right
+  // sort windows left to right
   windows.sort((a: Window, b: Window) => {
     var aFrame = a.frame(), bFrame = b.frame();
-    if (option === LayoutOptions.MAKE_PRIMARY) {
-      if (a.isEqual(window)) {
-        return 1;
-      } else if (b.isEqual(window)) {
-        return -1;
-      }
-    }
     return aFrame.x - bFrame.x;
   });
 
@@ -273,7 +312,6 @@ function _performLayout(option: LayoutOption, screen: Screen, windows: Array<Win
       const wNewRatio = Math.max(minRatio, Math.min(wMaxRatio, tmpRatio));
       setSpecRatio(screen, window, wNewRatio);
 
-      const wHash = window.hash();
       const delta = (wNewRatio - wCurrentRatio) / (numWindows - 1);
 
       Object.keys(specRatios).forEach(wHs => {
