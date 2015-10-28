@@ -92,6 +92,10 @@ keyHandlers.push(Phoenix.bind('k', mod1, () => {
   fwin.screen().focusWindowToWest(fwin);
 }));
 
+eventHandlers.push(Phoenix.on('start', (window: Window) => {
+  performLayout(LayoutOptions.NONE);
+}));
+
 eventHandlers.push(Phoenix.on('windowDidClose', (window: Window) => {
   removeReferencesToWindow(window);
   performLayout(LayoutOptions.NONE);
