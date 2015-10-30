@@ -497,40 +497,81 @@ const WindowService = new (class {
       }
       return obj;
     }, {});
-    debug('end ratiosForScreen');
     return validRatioWindows;
   }
 
   getRatio(window: Window) {
-    debug('getRatio /');
     return this.ratioWindows[`${window.screen().hash()}`][`${window.hash()}`];
   }
 
   setRatio(window: Window, ratio: number) {
-    debug('setRatio');
     this.ratioWindows[`${window.screen().hash()}`][`${window.hash()}`] = ratio;
-    debug('end setRatio');
   }
 
   unsetRatio(window: Window) {
-    debug('unsetRatio');
     delete this.ratioWindows[`${window.screen().hash()}`][`${window.hash()}`];
-    debug('end unsetRatio');
+  }
+
+  setFocusedWindow(window: Window) {
+    this.addWindow(window);
+    this.focusMap[`${window.screen().hash()}`] = window;
+  }
+
+  getFocusedWindowForScreen(screen: Screen) {
+    return this.focusMap[`${screen.hash()}`];
   }
 
 });
 
 // END LIBS
 
-// FLOW HACKS
+// FLOW DECLARATIONS
+// BUG: Flow does not load declarations in libs for Screen and Window
 
-// Flow bug with not prioritizing libs
 declare class Screen extends Identifiable {
   static mainScreen(): Screen;
   static screens(): Array<Screen>;
-  screen(): Screen;
-  visibleFrame(): Rectangle;
-  visibleFrameInRectangle(): Rectangle;
+  frameInRectangle(): Rectangle;
   windows(): Array<Window>;
   visibleWindows(): Array<Window>;
+  visibleFrame(): Rectangle;
+  visibleFrameInRectangle(): Rectangle;
+  next(): Screen;
+  previous(): Screen;
 }
+
+declare class Window extends Identifiable {
+  static focusedWindow(): Window;
+  static windows(): Array<Window>;
+  static visibleWindows(): Array<Window>;
+  static visibleWindowsInOrder(): Array<Window>;
+
+  otherWindowsOnSameScreen(): Array<Window>;
+  otherWindowsOnAllScreens(): Array<Window>;
+  title(): string;
+  isMain(): boolean;
+  isNormal(): boolean;
+  isMinimized(): boolean;
+  app(): App;
+  screen(): Screen;
+  topLeft(): Point;
+  size(): Size;
+  frame(): Rectangle;
+  setTopLeft(point: Point): boolean;
+  setSize(size: Size): boolean;
+  setFrame(frame: Rectangle): boolean;
+  maximize(): boolean;
+  minimize(): boolean;
+  unminimize(): boolean;
+  windowsToWest(): Array<Window>;
+  windowsToEast(): Array<Window>;
+  windowsToNorth(): Array<Window>;
+  windowsToSouth(): Array<Window>;
+  focus(): boolean;
+  focusClosestWindowInWest(): boolean;
+  focusClosestWindowInEast(): boolean;
+  focusClosestWindowInNorth(): boolean;
+  focusClosestWindowInSouth(): boolean;
+}
+
+// END FLOW DECLARATIONS
