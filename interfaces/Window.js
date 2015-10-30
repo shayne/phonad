@@ -1,16 +1,9 @@
 declare class Screen extends Identifiable {
-  /* custom */
-  static mainScreen(): Screen;
-
-  focusWindowToEast(window: Window): boolean;
-  focusWindowToWest(window: Window): boolean;
-
-  visibleWindows(): Array<Window>;
-  /* end custom */
-
   static mainScreen(): Screen;
   static screens(): Array<Screen>;
   frameInRectangle(): Rectangle;
+  windows(): Array<Window>;
+  visibleWindows(): Array<Window>;
   visibleFrame(): Rectangle;
   visibleFrameInRectangle(): Rectangle;
   next(): Screen;

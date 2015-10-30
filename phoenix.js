@@ -11,8 +11,12 @@ let IGNORED_APPS = [
 
 // DEBUG
 
-function debug(o: any) {
-  Phoenix.log(JSON.stringify(o));
+const DEBUG = false;
+
+function debug(message: any) {
+  if (!DEBUG) return;
+  if (typeof message == 'string') Phoenix.log(message);
+  else Phoenix.log(JSON.stringify(message));
 }
 
 // START HANDLERS
@@ -24,11 +28,13 @@ const mod1 = ['alt', 'shift'];
 const mod2 = ['alt', 'shift', 'ctrl'];
 
 keyHandlers.push(Phoenix.bind('r', mod2, () => {
-  Phoenix.reload();
+  WindowService.resetScreen(Screen.mainScreen());
+  performLayout();
+  showCenteredModal('Reset Layout');
 }));
 
 keyHandlers.push(Phoenix.bind('1', mod2, () => {
-  performLayout(LayoutOptions.NONE);
+  performLayout();
 
   showCenteredModal('Re-layout')
 }));
@@ -41,6 +47,12 @@ keyHandlers.push(Phoenix.bind('i', mod1, () => {
 keyHandlers.push(Phoenix.bind('a', mod1, () => {
   const app = App.launch('Atom');
   app.focus();
+}));
+
+keyHandlers.push(Phoenix.bind('a', mod2, () => {
+  const app = App.launch('Atom');
+  app.focus();
+  performLayout();
 }));
 
 keyHandlers.push(Phoenix.bind('c', mod1, () => {
@@ -58,12 +70,12 @@ keyHandlers.push(Phoenix.bind('return', mod1, () => {
 }));
 
 keyHandlers.push(Phoenix.bind('t', mod1, () => {
-  Phoenix.log('Ignoring app: ' + Window.focusedWindow().app().name());
+  debug('Ignoring app: ' + Window.focusedWindow().app().name());
   performLayout(LayoutOptions.TOGGLE_IGNORE);
 }));
 
 keyHandlers.push(Phoenix.bind('r', mod1, () => {
-  performLayout(LayoutOptions.RESET_WIDTH);
+  performLayout(LayoutOptions.RESET_RATIO);
 }));
 
 keyHandlers.push(Phoenix.bind('h', mod1, () => {
@@ -93,20 +105,30 @@ keyHandlers.push(Phoenix.bind('k', mod1, () => {
 }));
 
 eventHandlers.push(Phoenix.on('start', (window: Window) => {
-  performLayout(LayoutOptions.NONE);
+  performLayout();
 }));
 
 eventHandlers.push(Phoenix.on('windowDidClose', (window: Window) => {
-  removeReferencesToWindow(window);
-  performLayout(LayoutOptions.NONE);
+  debug('Window did close: ' + window.app().name());
+  const app = window.app();
+  debug({
+    wIsNormal: window.isNormal(),
+    wIsMinimized: window.isMinimized(),
+    aIsActive: app.isActive(),
+    aIsHidden: app.isHidden(),
+    aIsTerminated: app.isTerminated(),
+  });
+  WindowService.resetWindow(window);
+  performLayout();
 }));
 
 eventHandlers.push(Phoenix.on('windowDidOpen', (window: Window) => {
-  performLayout(LayoutOptions.NONE);
+  WindowService.addWindow(window);
+  performLayout();
 }));
 
 eventHandlers.push(Phoenix.on('windowDidResize', (window: Window) => {
-  performLayout(LayoutOptions.NONE);
+  performLayout();
 }));
 
 // END HANDLERS
@@ -129,19 +151,7 @@ function showCenteredModal(message: string) {
   m.show();
 }
 
-function removeReferencesToWindow(window: Window) {
-  const wHash = window.hash();
-  // Clear out ignoredWindows cache
-  const wIdx = IgnoredWindows.indexOf(wHash);
-  wIdx >= 0 && IgnoredWindows.splice(wIdx, 1);
-  // Clear out ratio cache
-  Screen.screens().forEach(s => {
-    delete SpecWinRatios[s.hash()][wHash];
-  });
-}
-
 // START LAYOUT
-
 
 var LayoutOptions = keyMirror({
   NONE: null,
@@ -151,41 +161,34 @@ var LayoutOptions = keyMirror({
   INCREASE_WIDTH: null,
   MOVE_RIGHT: null,
   MOVE_LEFT: null,
-  RESET_WIDTH: null,
+  RESET_RATIO: null,
 });
 
 type LayoutOption = $Enum<typeof LayoutOptions>;
 
-const IgnoredWindows = [];
+// const IgnoredWindows = [];
 
-function performLayout(option: LayoutOption) {
+function performLayout(option: LayoutOption = LayoutOptions.NONE) {
   const window = Window.focusedWindow();
   const screen = Screen.mainScreen();
-  const sHash = screen.hash();
+
+  WindowService.addWindow(window);
 
   // Toggle ignoring a window
   if (option === LayoutOptions.TOGGLE_IGNORE) {
-    const wHash = window.hash();
-    const wIdx = IgnoredWindows.indexOf(wHash);
-    wIdx >= 0 ? IgnoredWindows.splice(wIdx, 1)
-      : IgnoredWindows.push(wHash);
+    WindowService.toggleIgnore(window);
   }
 
-  if (option === LayoutOptions.RESET_WIDTH) {
-    delete SpecWinRatios[sHash][window.hash()];
+  if (option === LayoutOptions.RESET_RATIO) {
+    WindowService.unsetRatio(window);
   }
 
   // Filter out ignored apps/windows
-  const visibleWindowHashes = [];
   let windows = screen.visibleWindows()
     .filter(w => {
-      const wHash = w.hash();
-      visibleWindowHashes.push(wHash);
-      const appName = w.app().name();
-      if (IGNORED_APPS.some(n => appName === n)) {
-        return false;
-      }
-      if (IgnoredWindows.some(h => wHash === h)) {
+      WindowService.addWindow(w);
+      if (IGNORED_APPS.indexOf(w.app().name()) > -1 ||
+          WindowService.isIgnored(w)) {
         return false;
       }
       return true;
@@ -193,23 +196,9 @@ function performLayout(option: LayoutOption) {
 
     // Sometimes we don't receive onWindowDidClose, so
     // we'll remove ratios for stale windows
-    Object.keys(SpecWinRatios[sHash]).forEach(rHs => {
-      const rH = parseInt(rHs);
-      if (visibleWindowHashes.indexOf(rH) === -1) {
-        Phoenix.log('Removing from SpecWinRatios: ' + rH);
-        delete SpecWinRatios[sHash][rH];
-      }
-    });
+    WindowService.resetInvalidWindows();
 
     _performLayout(option, screen, windows, window);
-}
-
-const SpecWinRatios = {};
-_buildSpecWinRatios();
-function _buildSpecWinRatios() {
-  Screen.screens().forEach(s => {
-    SpecWinRatios[s.hash()] = { /* win-hash : ratio */ };
-  });
 }
 
 function _performLayout(option: LayoutOption, screen: Screen, windows: Array<Window>, window: Window) {
@@ -217,15 +206,13 @@ function _performLayout(option: LayoutOption, screen: Screen, windows: Array<Win
 
   // Return early if we only have one window
   if (numWindows === 1) {
-    _buildSpecWinRatios();
-    IgnoredWindows.splice(0, IgnoredWindows.length);
+    WindowService.reset();
     const w = windows[0];
     w.setFrame(screen.visibleFrameInRectangle());
     return;
   }
 
-  const sHash = screen.hash();
-  const wHash = window.hash();
+  const wHash = `${window.hash()}`;
 
   const {
     x: sX, y: sY,
@@ -250,18 +237,16 @@ function _performLayout(option: LayoutOption, screen: Screen, windows: Array<Win
     });
 
     if (cw && !cw.isEqual(window)) {
-      const cwHash = cw.hash();
-
       const cwFrame = cw.frame();
       cw.setFrame(window.frame());
       window.setFrame(cwFrame);
 
-      const wRatio = SpecWinRatios[sHash][wHash];
-      const cwRatio = SpecWinRatios[sHash][cwHash];
-      delete SpecWinRatios[sHash][cwHash];
-      delete SpecWinRatios[sHash][wRatio];
-      cwRatio && setSpecRatio(screen, window, cwRatio);
-      wRatio && setSpecRatio(screen, cw, wRatio);
+      const wRatio = WindowService.getRatio(window);
+      const cwRatio = WindowService.getRatio(cw);
+      WindowService.unsetRatio(window);
+      WindowService.unsetRatio(cw);
+      cwRatio && WindowService.setRatio(window, cwRatio);
+      wRatio && WindowService.setRatio(cw, wRatio);
     }
     return;
   }
@@ -291,11 +276,13 @@ function _performLayout(option: LayoutOption, screen: Screen, windows: Array<Win
     const minRatio = 0.16;
     const widthStep = 0.04;
 
-    const numFlowWindows = numWindows - getNumSpecWindows(screen);
-    const totalSpecRatio = getTotalSpecRatio(screen);
+    const ratios = WindowService.ratiosForScreen(screen);
+    const ratioWindows = Object.keys(ratios);
 
-    const specRatios = getSpecRatios(screen);
-    const wSpecRatio = specRatios[window.hash()] || 0;
+    const numFlowWindows = numWindows - ratioWindows.length;
+    const totalSpecRatio = ratioWindows.reduce((t, h) => t + ratios[h], 0);
+
+    const wSpecRatio = ratios[`${window.hash()}`] || 0;
     const wCurrentRatio = wSpecRatio || wWidth / sWidth;
     const tmpRatio = wCurrentRatio +
       (option === LayoutOptions.INCREASE_WIDTH ? widthStep : -widthStep);
@@ -303,41 +290,42 @@ function _performLayout(option: LayoutOption, screen: Screen, windows: Array<Win
     if (numFlowWindows - ((wSpecRatio > 0) ? 0 : 1) >= 1) {
       const maxRatio  = 1 - (totalSpecRatio - wCurrentRatio) - (minRatio * numFlowWindows);
       const wNewRatio = Math.max(minRatio, Math.min(maxRatio, tmpRatio));
-      setSpecRatio(screen, window, wNewRatio);
+      WindowService.setRatio(window, wNewRatio);
     } else {
       const maxRatio = 1 - (totalSpecRatio - wSpecRatio);
       const wMaxRatio = maxRatio +
         ((option === LayoutOptions.INCREASE_WIDTH) ? widthStep : -widthStep);
       const wNewRatio = Math.max(minRatio, Math.min(wMaxRatio, tmpRatio));
-      setSpecRatio(screen, window, wNewRatio);
+      WindowService.setRatio(window, wNewRatio);
 
       const delta = (wNewRatio - wCurrentRatio) / (numWindows - 1);
 
-      Object.keys(specRatios).forEach(wHs => {
-        const wH = parseInt(wHs);
+      ratioWindows.forEach(wH => {
         if (wH === wHash) return;
-        const wCurrentRatio = specRatios[wH];
+        const wCurrentWindow = WindowService.getWindow(wH);
+        const wCurrentRatio = ratios[wH];
         const wNewRatio = wCurrentRatio - delta;
-        setSpecRatio(screen, wH, wNewRatio);
+        WindowService.setRatio(wCurrentWindow, wNewRatio);
       });
     }
   }
 
-  const specRatios = getSpecRatios(screen);
-  const specRatioList = Object.keys(specRatios).map(hash => specRatios[hash]);
+  const ratios = WindowService.ratiosForScreen(screen);
+  const ratioWindows = Object.keys(ratios);
+  const specRatioList = ratioWindows.map(hash => ratios[hash]);
   const specWidthMap = {};
-  const totalWinWidths = Object.keys(specRatios).reduce((t, hash) => {
-    const width = Math.round(specRatios[hash] * sWidth);
+  const totalWinWidths = ratioWindows.reduce((t, hash) => {
+    const width = Math.round(ratios[hash] * sWidth);
     specWidthMap[hash] = width;
     return t += width;
   }, 0);
 
   const flowWidth = (sWidth - totalWinWidths) /
-    Math.max(1, numWindows - getNumSpecWindows(screen));
+    Math.max(1, numWindows - ratioWindows.length);
 
   let cX = sX;
   windows.forEach((w: Window, i: number) => {
-    const x = cX, y = sY, width = specWidthMap[w.hash()] || flowWidth;
+    const x = cX, y = sY, width = specWidthMap[`${w.hash()}`] || flowWidth;
     cX += width;
     const newFrame = {
       x, y, height: sHeight,
@@ -346,31 +334,7 @@ function _performLayout(option: LayoutOption, screen: Screen, windows: Array<Win
     w.setFrame(newFrame);
     // debug({ newFrame });
   });
-  // Phoenix.log('Layout finished');
-}
-
-function getSpecRatios(screenOrHash: Screen|number): Object {
-  const sHash = typeof screenOrHash === 'number' ? screenOrHash : screenOrHash.hash();
-  return SpecWinRatios[sHash];
-}
-
-function getNumSpecWindows(screenOrHash: Screen|number): number {
-  const sHash = typeof screenOrHash === 'number' ? screenOrHash : screenOrHash.hash();
-  return Object.keys(getSpecRatios(screenOrHash)).length;
-}
-
-function getTotalSpecRatio(screenOrHash: Screen|number): number {
-  const sHash = typeof screenOrHash === 'number' ? screenOrHash : screenOrHash.hash();
-  const specRatios = getSpecRatios(screenOrHash);
-  return Object.keys(specRatios)
-    .map(hash => specRatios[hash])
-    .reduce((t, r) => t + r, 0);
-}
-
-function setSpecRatio(screenOrHash: Screen|number, windowOrHash: Window|number, ratio: number) {
-  const sHash = typeof screenOrHash === 'number' ? screenOrHash : screenOrHash.hash();
-  const wHash = typeof windowOrHash === 'number' ? windowOrHash : windowOrHash.hash();
-  SpecWinRatios[sHash][wHash] = ratio;
+  debug('Layout finished');
 }
 
 function focusWindowToEast(window: Window): boolean {
@@ -382,7 +346,7 @@ function focusWindowToEast(window: Window): boolean {
     return aFrame.x - bFrame.x;
   });
 
-  const idx = windows.map(w => w.hash()).indexOf(window.hash());
+  const idx = windows.map(w => `${w.hash()}`).indexOf(`${window.hash()}`);
   const newIdx = (idx || windows.length) - 1 % windows.length;
 
   return windows[newIdx].focus();
@@ -397,7 +361,7 @@ function focusWindowToWest(window: Window): boolean {
     return aFrame.x - bFrame.x;
   });
 
-  const idx = windows.map(w => w.hash()).indexOf(window.hash());
+  const idx = windows.map(w => `${w.hash()}`).indexOf(`${window.hash()}`);
   const newIdx = (idx + 1) % windows.length;
 
   return windows[newIdx].focus();
@@ -419,6 +383,143 @@ function keyMirror(obj) {
   return ret;
 };
 
+type WindowMap = { [key: string]: Window };
+type WindowRatioMap = { [key: string]: number };
+type RatioWindows = { [key: string]: WindowRatioMap }
+
+const WindowService = new (class {
+  windows: WindowMap;
+  ignoredWindows: Array<string>;
+  ratioWindows: RatioWindows;
+
+  constructor() {
+    debug('constructor');
+    this.windows = {};
+    this.ignoredWindows = [];
+    this.ratioWindows = {};
+
+    Window.windows().forEach(w => this.windows[`${w.hash()}`] = w);
+    Screen.screens().forEach(s => this.ratioWindows[`${s.hash()}`] = {});
+    debug('end constructor');
+  }
+
+  addWindow(window: Window) {
+    debug('addWindow');
+    if (!this.getWindow(`${window.hash()}`)) {
+      this.windows[`${window.hash()}`] = window;
+    }
+    debug('end addWindow');
+  }
+
+  reset() {
+    debug('reset');
+    this.constructor();
+    debug('end reset');
+  }
+
+  resetScreen(screen: Screen) {
+    debug('resetScreen');
+    this.ignoredWindows.forEach(hash => {
+      const window = this.getWindow(hash);
+      if (this.isIgnored(window)) {
+        this.toggleIgnore(window);
+      }
+    });
+    this.ratioWindows[`${screen.hash()}`] = {};
+    debug('end resetScreen');
+  }
+
+  resetWindow(window: Window) {
+    debug('resetWindow');
+    this.unsetRatio(window);
+    if (this.isIgnored(window)) {
+      this.toggleIgnore(window);
+    }
+    debug('end resetWindow');
+  }
+
+  isValidWindow(window: Window) {
+    debug('isValidWindow');
+    const isValid = window && window.isNormal() && !window.isMinimized() &&
+          window.app() && !window.app().isHidden() && !window.app().isTerminated();
+    debug('end isValidWindow');
+    return isValid;
+  }
+
+  resetInvalidWindows() {
+    debug('resetInvalidWindows');
+    Object.keys(this.windows).forEach(hash => {
+      const window = this.windows[hash];
+      if (!this.isValidWindow(window)) {
+        delete this.windows[hash];
+        this.resetWindow(window);
+      }
+    });
+    debug('end resetInvalidWindows');
+  }
+
+  getWindow(hash: string) {
+    debug('getWindow /');
+    return this.windows[hash];
+  }
+
+  isIgnored(window: Window): boolean {
+    debug('isIgnored /');
+    return this.ignoredWindows.indexOf(`${window.hash()}`) > -1;
+  }
+
+  toggleIgnore(window: Window) {
+    debug('toggleIgnore');
+    if (this.isIgnored(window)) {
+      const idx = this.ignoredWindows.indexOf(`${window.hash()}`);
+      delete this.ignoredWindows[idx];
+    } else {
+      this.ignoredWindows.push(`${window.hash()}`);
+    }
+    debug('end toggleIgnore');
+  }
+
+  clearIgnored() {
+    debug('clearIgnored');
+    this.ignoredWindows = [];
+    debug('end clearIgnored');
+  }
+
+  ratiosForScreen(screen: Screen) {
+    debug('ratiosForScreen');
+    const visibleWindows = screen.visibleWindows();
+    const allRatioWindows = this.ratioWindows[`${screen.hash()}`];
+    const validRatioWindows = Object.keys(allRatioWindows).reduce( (obj, hash) => {
+      const window = this.getWindow(hash);
+      if (visibleWindows.some(w => w.isEqual(window))) {
+        // $FlowFixMe computed properties
+        return { ...obj, [hash]: allRatioWindows[hash] };
+      }
+      return obj;
+    }, {});
+    debug('end ratiosForScreen');
+    return validRatioWindows;
+  }
+
+  getRatio(window: Window) {
+    debug('getRatio /');
+    return this.ratioWindows[`${window.screen().hash()}`][`${window.hash()}`];
+  }
+
+  setRatio(window: Window, ratio: number) {
+    debug('setRatio');
+    this.ratioWindows[`${window.screen().hash()}`][`${window.hash()}`] = ratio;
+    debug('end setRatio');
+  }
+
+  unsetRatio(window: Window) {
+    debug('unsetRatio');
+    delete this.ratioWindows[`${window.screen().hash()}`][`${window.hash()}`];
+    debug('end unsetRatio');
+  }
+
+});
+
 // END LIBS
 
 // FLOW HACKS
@@ -430,5 +531,6 @@ declare class Screen extends Identifiable {
   screen(): Screen;
   visibleFrame(): Rectangle;
   visibleFrameInRectangle(): Rectangle;
+  windows(): Array<Window>;
   visibleWindows(): Array<Window>;
 }
