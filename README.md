@@ -72,4 +72,5 @@ A WIP of implementing a Xmonad inspired config for kasper/phoenix
 * Perform layout on current screen
 
 ### Todo
- - [ ] Add ability to persist the WindowService between context reloads 
+ - [ ] Add ability to persist the WindowService between context reloads
+ - [ ] Upgrade support for babel 6
