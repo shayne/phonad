@@ -49,12 +49,6 @@ keyHandlers.push(Phoenix.bind('a', mod1, () => {
   app.focus();
 }));
 
-keyHandlers.push(Phoenix.bind('a', mod2, () => {
-  const app = App.launch('Atom');
-  app.focus();
-  performLayout();
-}));
-
 keyHandlers.push(Phoenix.bind('c', mod1, () => {
   const app = App.launch('Google Chrome');
   app.focus();
@@ -69,6 +63,18 @@ keyHandlers.push(Phoenix.bind('return', mod1, () => {
   performLayout(LayoutOptions.MAKE_PRIMARY);
 }));
 
+keyHandlers.push(Phoenix.bind('return', mod2, () => {
+  performLayout(LayoutOptions.SWITCH_SCREEN);
+}));
+
+keyHandlers.push(Phoenix.bind('space', mod1, () => {
+  WindowService.setFocusedWindow(Window.focusedWindow());
+  const nextScreen = Screen.mainScreen().next();
+  const window = WindowService.getFocusedWindowForScreen(nextScreen) ||
+    nextScreen.visibleWindows()[0].focus();
+  window.focus();
+}));
+
 keyHandlers.push(Phoenix.bind('t', mod1, () => {
   debug('Ignoring app: ' + Window.focusedWindow().app().name());
   performLayout(LayoutOptions.TOGGLE_IGNORE);
@@ -78,34 +84,39 @@ keyHandlers.push(Phoenix.bind('r', mod1, () => {
   performLayout(LayoutOptions.RESET_RATIO);
 }));
 
-keyHandlers.push(Phoenix.bind('h', mod1, () => {
+keyHandlers.push(Phoenix.bind('j', mod1, () => {
   performLayout(LayoutOptions.DECREASE_WIDTH);
 }));
 
-keyHandlers.push(Phoenix.bind('l', mod1, () => {
+keyHandlers.push(Phoenix.bind('k', mod1, () => {
   performLayout(LayoutOptions.INCREASE_WIDTH);
 }));
 
-keyHandlers.push(Phoenix.bind('j', mod2, () => {
-  performLayout(LayoutOptions.MOVE_RIGHT);
+keyHandlers.push(Phoenix.bind('h', mod1, () => {
+  const fwin = Window.focusedWindow();
+  focusWindowToLeft(fwin);
 }));
 
-keyHandlers.push(Phoenix.bind('k', mod2, () => {
+keyHandlers.push(Phoenix.bind('l', mod1, () => {
+  const fwin = Window.focusedWindow();
+  focusWindowToRight(fwin);
+}));
+
+keyHandlers.push(Phoenix.bind('h', mod2, () => {
   performLayout(LayoutOptions.MOVE_LEFT);
 }));
 
-keyHandlers.push(Phoenix.bind('j', mod1, () => {
-  const fwin = Window.focusedWindow();
-  focusWindowToEast(fwin);
-}));
-
-keyHandlers.push(Phoenix.bind('k', mod1, () => {
-  const fwin = Window.focusedWindow();
-  focusWindowToWest(fwin);
+keyHandlers.push(Phoenix.bind('l', mod2, () => {
+  performLayout(LayoutOptions.MOVE_RIGHT);
 }));
 
 eventHandlers.push(Phoenix.on('start', (window: Window) => {
   performLayout();
+}));
+
+eventHandlers.push(Phoenix.on('windowDidFocus', (window: Window) => {
+  debug('windowDidFocus');
+  WindowService.setFocusedWindow(window);
 }));
 
 eventHandlers.push(Phoenix.on('windowDidClose', (window: Window) => {
@@ -162,6 +173,7 @@ var LayoutOptions = keyMirror({
   MOVE_RIGHT: null,
   MOVE_LEFT: null,
   RESET_RATIO: null,
+  SWITCH_SCREEN: null,
 });
 
 type LayoutOption = $Enum<typeof LayoutOptions>;
@@ -170,7 +182,7 @@ type LayoutOption = $Enum<typeof LayoutOptions>;
 
 function performLayout(option: LayoutOption = LayoutOptions.NONE) {
   const window = Window.focusedWindow();
-  const screen = Screen.mainScreen();
+  const screen = window.screen();
 
   WindowService.addWindow(window);
 
@@ -181,6 +193,13 @@ function performLayout(option: LayoutOption = LayoutOptions.NONE) {
 
   if (option === LayoutOptions.RESET_RATIO) {
     WindowService.unsetRatio(window);
+  }
+
+  if (option === LayoutOptions.SWITCH_SCREEN) {
+    const nextScreen = window.screen().next();
+    const { y: sY } = nextScreen.visibleFrameInRectangle();
+    window.setFrame({x: 0, y: sY, width: 0, height: 0});
+    WindowService.resetWindow(window);
   }
 
   // Filter out ignored apps/windows
@@ -262,7 +281,7 @@ function _performLayout(option: LayoutOption, screen: Screen, windows: Array<Win
   if (option === LayoutOptions.MOVE_RIGHT || option === LayoutOptions.MOVE_LEFT) {
     const win1 = windows.filter(w => w.isEqual(window))[0];
     const idx = windows.indexOf(win1);
-    const newIdx = (option === LayoutOptions.MOVE_LEFT
+    const newIdx = (option === LayoutOptions.MOVE_RIGHT
       ? idx + 1 : (idx || numWindows) - 1) % numWindows;
     const nwin = windows[newIdx];
     windows[idx] = nwin;
@@ -337,7 +356,7 @@ function _performLayout(option: LayoutOption, screen: Screen, windows: Array<Win
   debug('Layout finished');
 }
 
-function focusWindowToEast(window: Window): boolean {
+function focusWindowToLeft(window: Window): boolean {
   const windows = window.screen().visibleWindows();
 
   // sort windows left to right
@@ -352,7 +371,7 @@ function focusWindowToEast(window: Window): boolean {
   return windows[newIdx].focus();
 }
 
-function focusWindowToWest(window: Window): boolean {
+function focusWindowToRight(window: Window): boolean {
   const windows = window.screen().visibleWindows();
 
   // sort windows left to right
@@ -384,41 +403,35 @@ function keyMirror(obj) {
 };
 
 type WindowMap = { [key: string]: Window };
+type FocusMap = { [key: string]: Window };
 type WindowRatioMap = { [key: string]: number };
 type RatioWindows = { [key: string]: WindowRatioMap }
 
 const WindowService = new (class {
   windows: WindowMap;
+  focusMap: FocusMap;
   ignoredWindows: Array<string>;
   ratioWindows: RatioWindows;
 
   constructor() {
-    debug('constructor');
     this.windows = {};
+    this.focusMap = {};
     this.ignoredWindows = [];
     this.ratioWindows = {};
 
     Window.windows().forEach(w => this.windows[`${w.hash()}`] = w);
     Screen.screens().forEach(s => this.ratioWindows[`${s.hash()}`] = {});
-    debug('end constructor');
   }
 
   addWindow(window: Window) {
-    debug('addWindow');
-    if (!this.getWindow(`${window.hash()}`)) {
-      this.windows[`${window.hash()}`] = window;
-    }
-    debug('end addWindow');
+    this.windows[`${window.hash()}`] = window;
   }
 
   reset() {
-    debug('reset');
     this.constructor();
-    debug('end reset');
   }
 
   resetScreen(screen: Screen) {
-    debug('resetScreen');
     this.ignoredWindows.forEach(hash => {
       const window = this.getWindow(hash);
       if (this.isIgnored(window)) {
@@ -426,28 +439,23 @@ const WindowService = new (class {
       }
     });
     this.ratioWindows[`${screen.hash()}`] = {};
-    debug('end resetScreen');
   }
 
   resetWindow(window: Window) {
-    debug('resetWindow');
     this.unsetRatio(window);
     if (this.isIgnored(window)) {
       this.toggleIgnore(window);
     }
-    debug('end resetWindow');
+    delete this.windows[`${window.hash()}`];
   }
 
   isValidWindow(window: Window) {
-    debug('isValidWindow');
     const isValid = window && window.isNormal() && !window.isMinimized() &&
           window.app() && !window.app().isHidden() && !window.app().isTerminated();
-    debug('end isValidWindow');
     return isValid;
   }
 
   resetInvalidWindows() {
-    debug('resetInvalidWindows');
     Object.keys(this.windows).forEach(hash => {
       const window = this.windows[hash];
       if (!this.isValidWindow(window)) {
@@ -455,38 +463,30 @@ const WindowService = new (class {
         this.resetWindow(window);
       }
     });
-    debug('end resetInvalidWindows');
   }
 
   getWindow(hash: string) {
-    debug('getWindow /');
     return this.windows[hash];
   }
 
   isIgnored(window: Window): boolean {
-    debug('isIgnored /');
     return this.ignoredWindows.indexOf(`${window.hash()}`) > -1;
   }
 
   toggleIgnore(window: Window) {
-    debug('toggleIgnore');
     if (this.isIgnored(window)) {
       const idx = this.ignoredWindows.indexOf(`${window.hash()}`);
       delete this.ignoredWindows[idx];
     } else {
       this.ignoredWindows.push(`${window.hash()}`);
     }
-    debug('end toggleIgnore');
   }
 
   clearIgnored() {
-    debug('clearIgnored');
     this.ignoredWindows = [];
-    debug('end clearIgnored');
   }
 
   ratiosForScreen(screen: Screen) {
-    debug('ratiosForScreen');
     const visibleWindows = screen.visibleWindows();
     const allRatioWindows = this.ratioWindows[`${screen.hash()}`];
     const validRatioWindows = Object.keys(allRatioWindows).reduce( (obj, hash) => {

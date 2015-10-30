@@ -10,10 +10,10 @@ A WIP of implementing a Xmonad inspired config for kasper/phoenix
 **`mod2`** = `alt + shift - ctrl`
 
 **`'r' + mod2`**
-* Reload Phoenix config
+* Reset layout for current screen, clearing ignored windows and specified window ratios
 
 **`'1' + mod2`**
-* Re-layout
+* Perform re-layout
 
 **`'i' + mod1`**
 * Focus/Launch iTerm
@@ -24,43 +24,52 @@ A WIP of implementing a Xmonad inspired config for kasper/phoenix
 **`'c' + mod1`**
 * Focus/Launch Google Chrome
 
+**`'m' + mod1`**
+* Focus/Launch Messages
+
 **`'return' + mod1`**
 * Swap current screen focused window frame with center most window
+
+**`'return' + mod2`**
+* Move current focused window to next screen
+
+**`'space' + mod1`**
+* Switch focus to next screen
 
 **`'t' + mod1`**
 * Toggle ignoring of focused window in layout
 
 **`'r' + mod1`**
-* Reset width of current focused window
-
-**`'h' + mod1`**
-* Decrease the width of current focused window
-
-**`'l' + mod1`**
-* Increase the width of current focused window
+* Reset fixed width ratio of current focused window
 
 **`'j' + mod1`**
-* Cycle current screen window focus to the right
+* Decrease the width of current focused window
 
 **`'k' + mod1`**
+* Increase the width of current focused window
+
+**`'h' + mod1`**
 * Cycle current screen window focus to the left
 
-**`'j' + mod2`**
-* Move current focused window to the right
+**`'l' + mod1`**
+* Cycle current screen window focus to the right
 
-**`'k' + mod2`**
+**`'h' + mod2`**
 * Move current focused window to the left
 
+**`'l' + mod2`**
+* Move current focused window to the right
+
 ### Events
+
+**`start`**
+* Perform layout on current screen
+
+**`windowDidFocus`**
+* Record as last focused window
 
 **`windowDidOpen`, `windowDidClose`, `windowDidResize`**
 * Perform layout on current screen
 
 ### Todo
- - [x] Add ability to resize focused window
- - [x] `'r' + mod1` to reset width
- - [x] Make primary window default to center-most screen
- - [ ] Add API to allow for "Make xzy app primary"
- - [ ] Add ability to add rows to a column
- - [x] Pull polyfills upstream into native project
- - [ ] Add persistence for layout settings
+ - [ ] Add ability to persist the WindowService between context reloads 
