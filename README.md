@@ -1,7 +1,11 @@
 # phonad
-A WIP of implementing a Xmonad inspired config for kasper/phoenix
+An ongoing implementation of a [xmonad](http://xmonad.org/)/[Amethyst](https://github.com/ianyh/Amethyst) inspired config for the [kasper/phoenix](https://github.com/kasper/phoenix) window management system.
 
 > NOTICE: Currently requires building [my fork of Phoenix](https://github.com/shayne/phoenix) due to pending up-stream pull-requests
+
+## Config File
+
+This [phoenix.js](https://github.com/shayne/phonad/blob/master/phoenix.js) config file uses [Babel](http://babeljs.io) as a pre-processor, utilizing a shebang which I built support for in Phoenix. When you fork you will need to change the [shebang line](https://github.com/shayne/phonad/blob/master/phoenix.js#L1) to reflect your environment.
 
 ## Features
 
