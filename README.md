@@ -1,6 +1,8 @@
 # phonad
 A WIP of implementing a Xmonad inspired config for kasper/phoenix
 
+> NOTICE: Currently requires building [my fork of Phoenix](https://github.com/shayne/phoenix) due to pending up-stream pull-requests
+
 ## Features
 
 ### Key Handlers
