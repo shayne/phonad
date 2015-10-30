@@ -491,7 +491,8 @@ const WindowService = new (class {
     const allRatioWindows = this.ratioWindows[`${screen.hash()}`];
     const validRatioWindows = Object.keys(allRatioWindows).reduce( (obj, hash) => {
       const window = this.getWindow(hash);
-      if (visibleWindows.some(w => w.isEqual(window))) {
+      if (this.isValidWindow(window) &&
+          visibleWindows.some(w => w.isEqual(window))) {
         // $FlowFixMe computed properties
         return { ...obj, [hash]: allRatioWindows[hash] };
       }
