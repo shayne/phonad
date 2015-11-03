@@ -306,9 +306,10 @@ function _performLayout(option: LayoutOption, screen: Screen, windows: Array<Win
     const tmpRatio = wCurrentRatio +
       (option === LayoutOptions.INCREASE_WIDTH ? widthStep : -widthStep);
 
-    if (numFlowWindows - ((wSpecRatio > 0) ? 0 : 1) >= 1) {
-      const maxRatio  = 1 - (totalSpecRatio - wCurrentRatio) - (minRatio * numFlowWindows);
-      const wNewRatio = Math.max(minRatio, Math.min(maxRatio, tmpRatio));
+    const wMaxFlowRatio  = 1 - (totalSpecRatio - wCurrentRatio) - (minRatio * numFlowWindows);
+    if (wMaxFlowRatio - wCurrentRatio > 0.1 &&
+        numFlowWindows - ((wSpecRatio > 0) ? 0 : 1) >= 1) {
+      const wNewRatio = Math.max(minRatio, Math.min(wMaxFlowRatio, tmpRatio));
       WindowService.setRatio(window, wNewRatio);
     } else {
       const maxRatio = 1 - (totalSpecRatio - wSpecRatio);
