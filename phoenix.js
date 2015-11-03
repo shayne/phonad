@@ -388,22 +388,6 @@ function focusWindowToRight(window: Window): boolean {
   return windows[newIdx].focus();
 }
 
-// START UTILS
-
-function keyMirror(obj) {
-  var ret = {};
-  var key;
-  if (!(obj instanceof Object && !Array.isArray(obj))) {
-    throw new Error('keyMirror(...): Argument must be an object.');
-  }
-  for (key in obj) {
-    if (obj.hasOwnProperty(key)) {
-      ret[key] = key;
-    }
-  }
-  return ret;
-};
-
 type WindowMap = { [key: string]: Window };
 type FocusMap = { [key: string]: Window };
 type WindowRatioMap = { [key: string]: number };
@@ -525,7 +509,23 @@ const WindowService = new (class {
 
 });
 
-// END LIBS
+// START UTILS
+
+function keyMirror(obj) {
+  var ret = {};
+  var key;
+  if (!(obj instanceof Object && !Array.isArray(obj))) {
+    throw new Error('keyMirror(...): Argument must be an object.');
+  }
+  for (key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      ret[key] = key;
+    }
+  }
+  return ret;
+};
+
+// END UTILS
 
 // FLOW DECLARATIONS
 // BUG: Flow does not load declarations in libs for Screen and Window
