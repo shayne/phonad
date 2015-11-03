@@ -7,6 +7,7 @@ let IGNORED_APPS = [
   '1Password mini',
   'QuickTime Player',
   'Dictionary',
+  'Screenhero',
 ];
 
 // DEBUG
